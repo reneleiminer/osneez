@@ -1,4 +1,6 @@
 import { requireSection } from "@/lib/supabase/auth";
+import Link from "next/link";
+
 import { AdminHeading, Empty, Notice } from "@/components/admin/ui";
 import { listOrders } from "@/lib/admin/data";
 import { formatPrice } from "@/lib/format";
@@ -58,7 +60,12 @@ export default async function AdminOrdersPage() {
               {orders.map((order) => (
                 <tr key={order.id} className="border-b border-bone/5 align-top">
                   <td className="px-4 py-4 text-smoke">
-                    {formatDate(order.created_at)}
+                    <Link
+                      href={`/admin/orders/${order.id}`}
+                      className="os-underline text-bone"
+                    >
+                      {formatDate(order.created_at)}
+                    </Link>
                     <p className="mt-1 text-[0.5625rem]">
                       #{order.stripe_session_id.slice(-8).toUpperCase()}
                     </p>

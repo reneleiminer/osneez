@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 
 import { getCustomer, getCustomerOrders } from "@/lib/account";
 import { formatPrice } from "@/lib/format";
-import { customerSignOut } from "./actions";
+import { customerSignOut, requestReturn } from "./actions";
 
 export const metadata: Metadata = {
   title: "Account",
@@ -27,7 +27,12 @@ function formatDate(value: string): string {
   return new Intl.DateTimeFormat("de-DE", { dateStyle: "long" }).format(date);
 }
 
-export default async function AccountPage() {
+export default async function AccountPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ returned?: string; error?: string }>;
+}) {
+  const { returned, error } = await searchParams;
   const user = await getCustomer();
   if (!user) redirect("/account/login");
 
@@ -49,6 +54,18 @@ export default async function AccountPage() {
           </button>
         </form>
       </header>
+
+      {returned ? (
+        <p className="mt-8 border-l-2 border-bone pl-4 text-xs text-smoke">
+          Rücksendung ist angemeldet. Wir melden uns per E-Mail mit der
+          Retourenadresse.
+        </p>
+      ) : null}
+      {error ? (
+        <p role="alert" className="mt-8 border-l-2 border-signal pl-4 text-xs text-signal">
+          Das hat nicht geklappt. Versuch es später erneut.
+        </p>
+      ) : null}
 
       {orders.length === 0 ? (
         <div className="mt-12 border os-rule px-6 py-16 text-center">
@@ -98,8 +115,83 @@ export default async function AccountPage() {
                   <p className="os-label mt-2 text-[0.625rem] text-signal">
                     {STATUS_LABEL[order.status] ?? order.status}
                   </p>
+                  {order.tracking_number ? (
+                    <p className="mt-2 text-[0.625rem] text-smoke">
+                      {order.carrier ?? "Sendung"}:{" "}
+                      {order.tracking_url ? (
+                        <a
+                          href={order.tracking_url}
+                          target="_blank"
+                          rel="noreferrer noopener"
+                          className="os-underline text-bone"
+                        >
+                          {order.tracking_number}
+                        </a>
+                      ) : (
+                        order.tracking_number
+                      )}
+                    </p>
+                  ) : null}
                 </div>
               </div>
+
+              <details className="os-accordion mt-6 border-t os-rule">
+                <summary className="flex items-center justify-between py-4">
+                  <span className="os-label text-[0.625rem] text-smoke">
+                    Rücksendung anmelden
+                  </span>
+                  <span
+                    aria-hidden="true"
+                    className="os-accordion-sign text-lg leading-none text-smoke"
+                  >
+                    +
+                  </span>
+                </summary>
+                <form action={requestReturn} className="grid gap-4 pb-6">
+                  <input type="hidden" name="order_id" value={order.id} />
+                  <input
+                    type="hidden"
+                    name="order_reference"
+                    value={order.stripe_session_id.slice(-8).toUpperCase()}
+                  />
+                  <div>
+                    <label
+                      htmlFor={`items-${order.id}`}
+                      className="os-eyebrow block"
+                    >
+                      Welche Artikel?
+                    </label>
+                    <input
+                      id={`items-${order.id}`}
+                      name="items"
+                      required
+                      placeholder="Pit Hoodie, Größe M"
+                      className="os-input"
+                    />
+                  </div>
+                  <div>
+                    <label
+                      htmlFor={`reason-${order.id}`}
+                      className="os-eyebrow block"
+                    >
+                      Grund
+                    </label>
+                    <textarea
+                      id={`reason-${order.id}`}
+                      name="reason"
+                      rows={2}
+                      placeholder="Passt nicht, zu klein …"
+                      className="os-input resize-y"
+                    />
+                  </div>
+                  <button
+                    type="submit"
+                    className="os-btn os-btn-ghost justify-self-start"
+                  >
+                    Rücksendung anmelden
+                  </button>
+                </form>
+              </details>
             </li>
           ))}
         </ul>

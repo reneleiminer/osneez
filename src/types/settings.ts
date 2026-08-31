@@ -88,3 +88,60 @@ export interface StaffMember {
   active: boolean;
   created_at: string;
 }
+
+export interface ShippingZone {
+  id: string;
+  name: string;
+  countries: string[];
+  sort_order: number;
+  active: boolean;
+}
+
+export interface ShippingRate {
+  id: string;
+  zone_id: string;
+  name: string;
+  description: string | null;
+  /** Cents. */
+  price: number;
+  free_over: number | null;
+  min_subtotal: number | null;
+  max_subtotal: number | null;
+  delivery_min_days: number;
+  delivery_max_days: number;
+  sort_order: number;
+  active: boolean;
+}
+
+/** A rate resolved for a concrete country and cart value. */
+export interface ResolvedRate {
+  id: string;
+  zone: string;
+  name: string;
+  description: string | null;
+  /** Cents, already zeroed when the free-shipping threshold is met. */
+  amount: number;
+  free: boolean;
+  freeOver: number | null;
+  deliveryMinDays: number;
+  deliveryMaxDays: number;
+}
+
+export type ReturnStatus =
+  | "requested"
+  | "approved"
+  | "received"
+  | "refunded"
+  | "rejected";
+
+export interface ReturnRequest {
+  id: string;
+  order_id: string | null;
+  order_reference: string | null;
+  email: string;
+  reason: string | null;
+  items: string | null;
+  status: ReturnStatus;
+  admin_note: string | null;
+  created_at: string;
+}

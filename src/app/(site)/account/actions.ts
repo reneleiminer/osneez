@@ -52,3 +52,30 @@ export async function customerSignOut() {
   await supabase?.auth.signOut();
   redirect("/");
 }
+
+export async function requestReturn(form: FormData) {
+  const supabase = await createAuthClient();
+  if (!supabase) redirect("/account/login");
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user?.email) redirect("/account/login");
+
+  // Inserted through the customer's own session: the RLS policy checks that
+  // the email matches the signed-in user, so one account cannot file a return
+  // in someone else's name.
+  const { error } = await supabase.from("return_requests").insert({
+    order_id: field(form, "order_id") || null,
+    order_reference: field(form, "order_reference") || null,
+    email: user.email,
+    items: field(form, "items") || null,
+    reason: field(form, "reason") || null,
+  });
+
+  if (error) {
+    console.error("[osneez] return request failed:", error);
+    redirect("/account?error=1");
+  }
+  redirect("/account?returned=1");
+}

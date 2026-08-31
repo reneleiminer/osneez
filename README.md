@@ -127,6 +127,8 @@ carries `noindex`.
 | Orders | everything the Stripe webhook wrote, status switch to `fulfilled` |
 | Newsletter | subscriber list, unsubscribe toggle, CSV export |
 | Discounts | promo codes, mirrored into Stripe as coupon + promotion code |
+| Shipping | zones per country group, several rates each, free-shipping thresholds |
+| Returns | requests customers raise from their account, with a status workflow |
 | Reports | revenue per day, bestsellers, order status, low stock, list growth |
 | Legal | editable imprint, privacy, terms, returns and shipping texts |
 | Settings | company data, storefront, shipping rates, accepted payment methods |
@@ -138,6 +140,23 @@ every server action is checked against the role, so a narrower account cannot
 reach a wider section by crafting a request. Addresses listed in `ADMIN_EMAILS`
 are always owners — that is the bootstrap, and it is what keeps you from
 locking yourself out by editing the `staff` table.
+
+**Shipping.** Zones group countries; each zone holds any number of rates with
+their own price, free-shipping threshold, order-value window and delivery
+estimate. The cart asks for the destination country, shows the resulting rate
+before checkout, and the checkout session is then locked to that country — so
+the price shown and the price charged cannot drift apart. Without zones the
+flat rate from the settings applies, which is what a fresh install does.
+
+**Fulfilment.** Each order has a detail screen with carrier, tracking number,
+tracking link and an internal note; marking it shipped sets the status and
+timestamp. `/admin/orders/[id]/slip` renders a printable packing slip on a
+light background. The tracking link appears in the customer's account.
+
+What is deliberately *not* built: buying carrier labels and live carrier rates.
+Both need a paid contract with DHL, DPD or a broker; there is no free path. The
+data model has the fields such an integration would fill, so it can be added
+later without a migration.
 
 **Customer accounts** live at `/account`. Sign-up and sign-in run on Supabase
 Auth; order history is matched on the email Stripe collected at checkout and

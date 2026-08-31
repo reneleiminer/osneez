@@ -1,11 +1,28 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 
 import { ProductVisual } from "@/components/ui/product-visual";
 import { formatPrice } from "@/lib/format";
+import {
+  getServerSnapshot,
+  getSnapshot,
+  setDestination,
+  subscribe,
+} from "@/lib/shop/destination";
+import type { ResolvedRate } from "@/types/settings";
 import { useCart } from "./cart-provider";
+
+function countryName(code: string): string {
+  try {
+    return (
+      new Intl.DisplayNames(["de"], { type: "region" }).of(code) ?? code
+    );
+  } catch {
+    return code;
+  }
+}
 
 export function CartDrawer() {
   const {
@@ -16,17 +33,46 @@ export function CartDrawer() {
     close,
     remove,
     setQuantity,
-    remaining,
     qualifiesForFreeShipping,
     freeShippingThreshold,
   } = useCart();
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const country = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
+  const [countries, setCountries] = useState<string[]>(["DE"]);
+  const [rates, setRates] = useState<ResolvedRate[]>([]);
   const panelRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     if (isOpen) panelRef.current?.focus();
   }, [isOpen]);
+
+  // Live shipping cost for the chosen destination and cart value.
+  useEffect(() => {
+    if (!isOpen || count === 0) return;
+    const controller = new AbortController();
+    fetch(
+      `/api/shipping-rates?country=${encodeURIComponent(country)}&subtotal=${subtotal}`,
+      { signal: controller.signal },
+    )
+      .then((response) => response.json() as Promise<{
+        rates?: ResolvedRate[];
+        countries?: string[];
+      }>)
+      .then((data) => {
+        setRates(data.rates ?? []);
+        if (data.countries?.length) setCountries(data.countries);
+      })
+      .catch(() => {
+        /* aborted or offline — the checkout still resolves rates server-side */
+      });
+    return () => controller.abort();
+  }, [isOpen, country, subtotal, count]);
+
+  function chooseCountry(code: string) {
+    setDestination(code);
+  }
 
   function dismiss() {
     setError(null);
@@ -41,6 +87,7 @@ export function CartDrawer() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          country,
           items: lines.map((line) => ({
             slug: line.slug,
             size: line.size,
@@ -61,7 +108,12 @@ export function CartDrawer() {
     }
   }
 
-  const progress = Math.min(100, (subtotal / freeShippingThreshold) * 100);
+  const cheapest = rates[0] ?? null;
+  // The zone's own threshold wins; the settings value is the fallback.
+  const threshold = cheapest?.freeOver ?? freeShippingThreshold;
+  const missing = Math.max(0, threshold - subtotal);
+  const isFree = cheapest ? cheapest.free : qualifiesForFreeShipping;
+  const progress = Math.min(100, threshold ? (subtotal / threshold) * 100 : 100);
 
   return (
     <div
@@ -108,9 +160,9 @@ export function CartDrawer() {
         {count > 0 ? (
           <div className="border-b os-rule px-6 py-4">
             <p className="os-label text-[0.625rem] text-smoke">
-              {qualifiesForFreeShipping
+              {isFree
                 ? "Free shipping unlocked"
-                : `${formatPrice(remaining)} left for free shipping`}
+                : `${formatPrice(missing)} left for free shipping`}
             </p>
             <div className="mt-2 h-px w-full bg-steel/60">
               <div
@@ -134,10 +186,7 @@ export function CartDrawer() {
           ) : (
             <ul className="divide-y divide-bone/10">
               {lines.map((line) => (
-                <li
-                  key={`${line.slug}-${line.size}`}
-                  className="flex gap-4 py-5"
-                >
+                <li key={`${line.slug}-${line.size}`} className="flex gap-4 py-5">
                   <Link
                     href={`/shop/${line.slug}`}
                     onClick={dismiss}
@@ -225,10 +274,44 @@ export function CartDrawer() {
                 {error}
               </p>
             ) : null}
+
+            <div className="mb-4">
+              <label
+                htmlFor="cart-country"
+                className="os-label text-[0.625rem] text-smoke"
+              >
+                Lieferland
+              </label>
+              <select
+                id="cart-country"
+                value={country}
+                onChange={(event) => chooseCountry(event.target.value)}
+                tabIndex={isOpen ? 0 : -1}
+                className="mt-2 w-full border os-rule bg-ink px-3 py-2 text-xs"
+              >
+                {countries.map((code) => (
+                  <option key={code} value={code}>
+                    {countryName(code)}
+                  </option>
+                ))}
+              </select>
+            </div>
+
             <div className="os-label flex items-baseline justify-between text-xs">
-              <span className="text-smoke">Subtotal</span>
+              <span className="text-smoke">Zwischensumme</span>
               <span className="tabular-nums">{formatPrice(subtotal)}</span>
             </div>
+            {cheapest ? (
+              <div className="os-label mt-2 flex items-baseline justify-between text-xs">
+                <span className="text-smoke">
+                  Versand · {cheapest.name}
+                </span>
+                <span className="tabular-nums">
+                  {cheapest.amount === 0 ? "gratis" : formatPrice(cheapest.amount)}
+                </span>
+              </div>
+            ) : null}
+
             <button
               type="button"
               onClick={checkout}
@@ -239,7 +322,7 @@ export function CartDrawer() {
               {loading ? "Loading…" : "Checkout"}
             </button>
             <p className="mt-3 text-center text-[0.625rem] tracking-wide text-smoke uppercase">
-              Steuern inklusive · Versand im Checkout
+              Steuern inklusive · Endpreis im Checkout
             </p>
           </footer>
         ) : null}

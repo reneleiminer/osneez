@@ -654,3 +654,114 @@ export async function deleteStaff(form: FormData) {
   revalidatePath("/admin/staff");
   redirect("/admin/staff");
 }
+
+/* -------------------------------------------------------------------------- */
+/* Shipping zones and rates                                                   */
+/* -------------------------------------------------------------------------- */
+
+export async function saveShippingZone(form: FormData) {
+  const db = await guard("shipping");
+  const id = nullable(form, "id");
+  const payload = {
+    name: str(form, "name"),
+    countries: list(form, "countries").map((code) =>
+      code.toUpperCase().slice(0, 2),
+    ),
+    sort_order: int(form, "sort_order"),
+    active: bool(form, "active"),
+  };
+  const { error } = id
+    ? await db.from("shipping_zones").update(payload).eq("id", id)
+    : await db.from("shipping_zones").insert(payload);
+  if (error) throw new Error(error.message);
+  flush();
+  redirect("/admin/shipping?saved=1");
+}
+
+export async function deleteShippingZone(form: FormData) {
+  const db = await guard("shipping");
+  const { error } = await db
+    .from("shipping_zones")
+    .delete()
+    .eq("id", str(form, "id"));
+  if (error) throw new Error(error.message);
+  flush();
+  redirect("/admin/shipping");
+}
+
+export async function saveShippingRate(form: FormData) {
+  const db = await guard("shipping");
+  const id = nullable(form, "id");
+  const payload = {
+    zone_id: str(form, "zone_id"),
+    name: str(form, "name"),
+    description: nullable(form, "description"),
+    price: cents(form, "price"),
+    free_over: str(form, "free_over") ? cents(form, "free_over") : null,
+    min_subtotal: str(form, "min_subtotal") ? cents(form, "min_subtotal") : null,
+    max_subtotal: str(form, "max_subtotal") ? cents(form, "max_subtotal") : null,
+    delivery_min_days: Math.max(0, int(form, "delivery_min_days", 2)),
+    delivery_max_days: Math.max(0, int(form, "delivery_max_days", 5)),
+    sort_order: int(form, "sort_order"),
+    active: bool(form, "active"),
+  };
+  const { error } = id
+    ? await db.from("shipping_rates").update(payload).eq("id", id)
+    : await db.from("shipping_rates").insert(payload);
+  if (error) throw new Error(error.message);
+  flush();
+  redirect("/admin/shipping?saved=1");
+}
+
+export async function deleteShippingRate(form: FormData) {
+  const db = await guard("shipping");
+  const { error } = await db
+    .from("shipping_rates")
+    .delete()
+    .eq("id", str(form, "id"));
+  if (error) throw new Error(error.message);
+  flush();
+  redirect("/admin/shipping");
+}
+
+/* -------------------------------------------------------------------------- */
+/* Fulfilment and returns                                                     */
+/* -------------------------------------------------------------------------- */
+
+export async function saveFulfilment(form: FormData) {
+  const db = await guard("orders");
+  const id = str(form, "id");
+  const tracking = nullable(form, "tracking_number");
+  const markShipped = bool(form, "mark_shipped");
+
+  const { error } = await db
+    .from("orders")
+    .update({
+      carrier: nullable(form, "carrier"),
+      tracking_number: tracking,
+      tracking_url: nullable(form, "tracking_url"),
+      internal_note: nullable(form, "internal_note"),
+      ...(markShipped
+        ? { shipped_at: new Date().toISOString(), status: "fulfilled" }
+        : {}),
+    })
+    .eq("id", id);
+  if (error) throw new Error(error.message);
+
+  revalidatePath("/admin/orders");
+  redirect(`/admin/orders/${id}?saved=1`);
+}
+
+export async function updateReturn(form: FormData) {
+  const db = await guard("returns");
+  const { error } = await db
+    .from("return_requests")
+    .update({
+      status: str(form, "status"),
+      admin_note: nullable(form, "admin_note"),
+    })
+    .eq("id", str(form, "id"));
+  if (error) throw new Error(error.message);
+  revalidatePath("/admin/returns");
+  redirect("/admin/returns");
+}

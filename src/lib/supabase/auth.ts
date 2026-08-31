@@ -60,6 +60,8 @@ export type AdminSection =
   | "newsletter"
   | "discounts"
   | "reports"
+  | "shipping"
+  | "returns"
   | "legal"
   | "settings"
   | "staff";
@@ -75,7 +77,7 @@ const ACCESS: Record<StaffRole, AdminSection[] | "*"> = {
     "discounts",
     "legal",
   ],
-  fulfilment: ["overview", "orders"],
+  fulfilment: ["overview", "orders", "returns"],
 };
 
 export function canAccess(role: StaffRole, section: AdminSection): boolean {

@@ -1,7 +1,13 @@
 import "server-only";
 
 import { getSupabaseAdminClient } from "@/lib/supabase/admin";
-import type { Discount, StaffMember } from "@/types/settings";
+import type {
+  Discount,
+  ReturnRequest,
+  ShippingRate,
+  ShippingZone,
+  StaffMember,
+} from "@/types/settings";
 import type { Collection, Drop, Product, WorldStory } from "@/types/shop";
 
 /**
@@ -20,6 +26,12 @@ export type AdminOrder = {
   payment_status: string | null;
   status: string;
   line_items: { description: string; quantity: number }[] | null;
+  shipping_details: unknown;
+  carrier: string | null;
+  tracking_number: string | null;
+  tracking_url: string | null;
+  shipped_at: string | null;
+  internal_note: string | null;
   created_at: string;
 };
 
@@ -307,4 +319,44 @@ export async function reportData(days = 30): Promise<ReportData> {
       .slice(-12)
       .map(([label, value]) => ({ label, value })),
   };
+}
+
+export type ZoneWithRates = ShippingZone & { rates: ShippingRate[] };
+
+export async function listShippingZones(): Promise<ZoneWithRates[]> {
+  const db = getSupabaseAdminClient();
+  if (!db) return [];
+  const { data, error } = await db
+    .from("shipping_zones")
+    .select("*, rates:shipping_rates(*)")
+    .order("sort_order", { ascending: true });
+  if (error) throw new Error(error.message);
+  return ((data ?? []) as unknown as ZoneWithRates[]).map((zone) => ({
+    ...zone,
+    rates: (zone.rates ?? []).sort((a, b) => a.sort_order - b.sort_order),
+  }));
+}
+
+export async function listReturns(): Promise<ReturnRequest[]> {
+  const db = getSupabaseAdminClient();
+  if (!db) return [];
+  const { data, error } = await db
+    .from("return_requests")
+    .select("*")
+    .order("created_at", { ascending: false })
+    .limit(200);
+  if (error) throw new Error(error.message);
+  return (data ?? []) as ReturnRequest[];
+}
+
+export async function getOrder(id: string): Promise<AdminOrder | null> {
+  const db = getSupabaseAdminClient();
+  if (!db) return null;
+  const { data, error } = await db
+    .from("orders")
+    .select("*")
+    .eq("id", id)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  return (data as AdminOrder) ?? null;
 }

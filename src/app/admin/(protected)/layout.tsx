@@ -19,6 +19,8 @@ const NAV: { href: string; label: string; section: AdminSection }[] = [
   { href: "/admin/world", label: "World", section: "world" },
   { href: "/admin/discounts", label: "Discounts", section: "discounts" },
   { href: "/admin/orders", label: "Orders", section: "orders" },
+  { href: "/admin/returns", label: "Returns", section: "returns" },
+  { href: "/admin/shipping", label: "Shipping", section: "shipping" },
   { href: "/admin/newsletter", label: "Newsletter", section: "newsletter" },
   { href: "/admin/reports", label: "Reports", section: "reports" },
   { href: "/admin/legal", label: "Legal", section: "legal" },

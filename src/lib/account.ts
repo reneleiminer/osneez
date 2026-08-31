@@ -11,6 +11,10 @@ export type CustomerOrder = {
   status: string;
   payment_status: string | null;
   line_items: { description: string; quantity: number }[] | null;
+  carrier: string | null;
+  tracking_number: string | null;
+  tracking_url: string | null;
+  shipped_at: string | null;
   created_at: string;
 };
 
@@ -39,7 +43,7 @@ export async function getCustomerOrders(): Promise<CustomerOrder[]> {
     const { data, error } = await supabase
       .from("orders")
       .select(
-        "id, stripe_session_id, amount_total, status, payment_status, line_items, created_at",
+        "id, stripe_session_id, amount_total, status, payment_status, line_items, carrier, tracking_number, tracking_url, shipped_at, created_at",
       )
       .order("created_at", { ascending: false })
       .limit(50);

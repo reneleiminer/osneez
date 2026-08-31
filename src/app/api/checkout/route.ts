@@ -2,6 +2,7 @@ import Stripe from "stripe";
 import { z } from "zod";
 
 import { getSettings } from "@/lib/settings";
+import { ratesForCountry, shippableCountries } from "@/lib/shipping";
 import { SITE } from "@/lib/site";
 import { buildLineItems } from "@/lib/stripe/line-items";
 
@@ -18,6 +19,7 @@ const payload = z.object({
     )
     .min(1)
     .max(20),
+  country: z.string().length(2).optional(),
 });
 
 export async function POST(request: Request) {
@@ -53,7 +55,14 @@ export async function POST(request: Request) {
 
   const settings = await getSettings();
   const origin = request.headers.get("origin") ?? SITE.url;
-  const freeShipping = result.subtotal >= settings.free_shipping_threshold;
+
+  // Shipping is resolved for the destination the customer picked in the cart.
+  // The country list is then narrowed to that country so the rate shown and
+  // the rate charged can never drift apart inside Stripe Checkout.
+  const allCountries = await shippableCountries();
+  const country = parsed.data.country?.toUpperCase();
+  const destination = country && allCountries.includes(country) ? country : null;
+  const rates = await ratesForCountry(destination ?? "DE", result.subtotal);
 
   try {
     const stripe = new Stripe(secret);
@@ -71,28 +80,29 @@ export async function POST(request: Request) {
       automatic_tax: { enabled: settings.automatic_tax },
       billing_address_collection: "required",
       shipping_address_collection: {
-        allowed_countries:
-          settings.shipping_countries as Stripe.Checkout.SessionCreateParams.ShippingAddressCollection.AllowedCountry[],
+        allowed_countries: (destination
+          ? [destination]
+          : allCountries) as Stripe.Checkout.SessionCreateParams.ShippingAddressCollection.AllowedCountry[],
       },
-      shipping_options: [
-        {
-          shipping_rate_data: {
-            type: "fixed_amount",
-            fixed_amount: {
-              amount: freeShipping ? 0 : settings.shipping_rate,
-              currency: "eur",
+      // Stripe accepts at most five options per session.
+      shipping_options: rates.slice(0, 5).map((rate) => ({
+        shipping_rate_data: {
+          type: "fixed_amount" as const,
+          fixed_amount: { amount: rate.amount, currency: "eur" },
+          display_name: rate.free ? `${rate.name} — gratis` : rate.name,
+          tax_behavior: "inclusive" as const,
+          delivery_estimate: {
+            minimum: {
+              unit: "business_day" as const,
+              value: rate.deliveryMinDays,
             },
-            display_name: freeShipping
-              ? "Kostenloser Versand"
-              : "Standardversand",
-            tax_behavior: "inclusive",
-            delivery_estimate: {
-              minimum: { unit: "business_day", value: settings.delivery_min_days },
-              maximum: { unit: "business_day", value: settings.delivery_max_days },
+            maximum: {
+              unit: "business_day" as const,
+              value: rate.deliveryMaxDays,
             },
           },
         },
-      ],
+      })),
       phone_number_collection: { enabled: true },
       allow_promotion_codes: settings.promotion_codes,
       invoice_creation: { enabled: settings.invoice_creation },
