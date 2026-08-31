@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect } from "react";
 
 export default function GlobalError({
@@ -21,13 +22,25 @@ export default function GlobalError({
         <br />
         stalled.
       </h1>
-      <p className="mt-8 max-w-[42ch] text-sm leading-relaxed text-smoke">
-        Da ist etwas schiefgelaufen. Versuch es erneut — wenn es bleibt, schreib
-        uns kurz.
+      <p className="mt-8 max-w-[46ch] text-sm leading-relaxed text-smoke">
+        Da ist etwas schiefgelaufen. Versuch es erneut — bleibt es, schick uns
+        die Kennung unten, damit sich der Fehler im Server-Log zuordnen lässt.
       </p>
-      <button type="button" onClick={reset} className="os-btn os-btn-primary mt-10 self-start">
-        Try again
-      </button>
+
+      {error.digest ? (
+        <p className="mt-6 border-l-2 border-signal pl-4 font-mono text-[0.6875rem] text-smoke">
+          Fehlerkennung: {error.digest}
+        </p>
+      ) : null}
+
+      <div className="mt-10 flex flex-wrap gap-3">
+        <button type="button" onClick={reset} className="os-btn os-btn-primary">
+          Erneut versuchen
+        </button>
+        <Link href="/" className="os-btn os-btn-ghost">
+          Zur Startseite
+        </Link>
+      </div>
     </div>
   );
 }

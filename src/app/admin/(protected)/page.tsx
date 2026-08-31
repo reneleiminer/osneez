@@ -1,7 +1,7 @@
 import Link from "next/link";
 
 import { AdminHeading, Card, Notice } from "@/components/admin/ui";
-import { dashboardCounts, isWritable } from "@/lib/admin/data";
+import { dashboardCounts, isWritable, missingTables } from "@/lib/admin/data";
 import { formatPrice } from "@/lib/format";
 
 export default async function AdminOverviewPage() {
@@ -18,7 +18,13 @@ export default async function AdminOverviewPage() {
     );
   }
 
-  const counts = await dashboardCounts();
+  const [counts, missing] = await Promise.all([
+    dashboardCounts(),
+    missingTables(),
+  ]);
+
+  // One entry per migration file, so the hint names a file instead of a table.
+  const pendingMigrations = [...new Set(missing.map((entry) => entry.migration))].sort();
 
   const tiles = [
     { label: "Produkte", value: String(counts.products), href: "/admin/products" },
@@ -33,6 +39,16 @@ export default async function AdminOverviewPage() {
         title="Overview"
         subtitle="Alles, was der Shop gerade zeigt und verkauft."
       />
+
+      {pendingMigrations.length ? (
+        <Notice tone="error">
+          Diese Migrationen sind noch nicht eingespielt:{" "}
+          <strong className="text-bone">{pendingMigrations.join(", ")}</strong>.
+          Bereiche, die darauf aufbauen, bleiben so lange leer. Führ die Dateien
+          aus <code className="text-bone">supabase/migrations</code> im Supabase
+          SQL Editor aus — in der Reihenfolge der Nummern.
+        </Notice>
+      ) : null}
 
       <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {tiles.map((tile) => (
