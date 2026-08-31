@@ -44,6 +44,8 @@ npm start       # serve the production build
 | `NEXT_PUBLIC_HERO_VIDEO_URL` | public | optional | campaign film for the hero |
 | `NEXT_PUBLIC_HERO_POSTER_URL` | public | optional | poster frame for that video |
 | `ADMIN_EMAILS` | **server** | `/admin` | comma-separated allowlist; empty = nobody gets in |
+| `RESEND_API_KEY` | **server** | transactional email | free tier; or use `SMTP_URL` |
+| `SMTP_URL` | **server** | transactional email | `smtps://user:pass@host:465` |
 
 See `.env.example`. No secret values are committed.
 
@@ -152,6 +154,21 @@ flat rate from the settings applies, which is what a fresh install does.
 tracking link and an internal note; marking it shipped sets the status and
 timestamp. `/admin/orders/[id]/slip` renders a printable packing slip on a
 light background. The tracking link appears in the customer's account.
+
+**Transactional email** is wired and waiting on credentials. Set either
+`RESEND_API_KEY` or `SMTP_URL` and the shop sends an order confirmation from
+the Stripe webhook, a shipping notification when an order is marked shipped,
+and a status mail on every return update. Sender address, display name and the
+three on/off switches live in Settings → E-Mail; a *Testmail* button verifies
+the setup in one click. Every attempt is written to `email_log`, so a failure
+is visible instead of silent, and confirmations are sent once per order.
+
+Secrets are deliberately kept out of the database: `settings` is world
+readable, so API keys belong in environment variables only.
+
+**Tracking links** are derived from the carrier name and tracking number for
+DHL, DPD, GLS, Hermes, UPS, Deutsche Post and FedEx — no contract needed. Leave
+the link field empty and it fills itself.
 
 What is deliberately *not* built: buying carrier labels and live carrier rates.
 Both need a paid contract with DHL, DPD or a broker; there is no free path. The

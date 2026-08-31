@@ -46,6 +46,16 @@ export const DEFAULT_SETTINGS: Settings = {
   delivery_min_days: 2,
   delivery_max_days: 5,
 
+  email_from: null,
+  email_from_name: "OSNEEZ",
+  email_reply_to: null,
+  email_order_confirmation: true,
+  email_shipping_notification: true,
+  email_return_updates: true,
+
+  carrier_default: null,
+  parcel_weight_g: 500,
+
   payment_methods: [],
   automatic_tax: true,
   promotion_codes: true,

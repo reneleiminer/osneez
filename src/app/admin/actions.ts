@@ -10,6 +10,13 @@ import {
 } from "@/lib/supabase/auth";
 import { getSupabaseAdminClient } from "@/lib/supabase/admin";
 import { STORAGE_BUCKETS } from "@/lib/supabase/config";
+import { alreadySent, sendEmail } from "@/lib/email/send";
+import {
+  returnUpdateEmail,
+  shippingNotificationEmail,
+} from "@/lib/email/templates";
+import { getSettings } from "@/lib/settings";
+import { trackingUrlFor } from "@/lib/carriers/tracking";
 import {
   createStripeDiscount,
   deleteStripeDiscount,
@@ -734,19 +741,51 @@ export async function saveFulfilment(form: FormData) {
   const tracking = nullable(form, "tracking_number");
   const markShipped = bool(form, "mark_shipped");
 
-  const { error } = await db
+  const carrier = nullable(form, "carrier");
+  // Fill the tracking link from the carrier when it was left empty.
+  const trackingUrl =
+    nullable(form, "tracking_url") ?? trackingUrlFor(carrier, tracking);
+
+  const { data: order, error } = await db
     .from("orders")
     .update({
-      carrier: nullable(form, "carrier"),
+      carrier,
       tracking_number: tracking,
-      tracking_url: nullable(form, "tracking_url"),
+      tracking_url: trackingUrl,
       internal_note: nullable(form, "internal_note"),
       ...(markShipped
         ? { shipped_at: new Date().toISOString(), status: "fulfilled" }
         : {}),
     })
-    .eq("id", id);
+    .eq("id", id)
+    .select("id, email, stripe_session_id, line_items")
+    .single();
   if (error) throw new Error(error.message);
+
+  if (markShipped && order?.email) {
+    const settings = await getSettings();
+    if (
+      settings.email_shipping_notification &&
+      !(await alreadySent(id, "shipping_notification"))
+    ) {
+      const mail = shippingNotificationEmail(settings, {
+        reference: String(order.stripe_session_id).slice(-8).toUpperCase(),
+        carrier,
+        trackingNumber: tracking,
+        trackingUrl,
+        lines: (order.line_items ?? []) as {
+          description: string;
+          quantity: number;
+        }[],
+      });
+      await sendEmail({
+        ...mail,
+        to: order.email as string,
+        template: "shipping_notification",
+        orderId: id,
+      });
+    }
+  }
 
   revalidatePath("/admin/orders");
   redirect(`/admin/orders/${id}?saved=1`);
@@ -754,14 +793,70 @@ export async function saveFulfilment(form: FormData) {
 
 export async function updateReturn(form: FormData) {
   const db = await guard("returns");
-  const { error } = await db
+  const status = str(form, "status");
+  const note = nullable(form, "admin_note");
+
+  const { data: request, error } = await db
     .from("return_requests")
-    .update({
-      status: str(form, "status"),
-      admin_note: nullable(form, "admin_note"),
-    })
-    .eq("id", str(form, "id"));
+    .update({ status, admin_note: note })
+    .eq("id", str(form, "id"))
+    .select("email, order_reference, status")
+    .single();
   if (error) throw new Error(error.message);
+
+  if (request?.email) {
+    const settings = await getSettings();
+    if (settings.email_return_updates) {
+      const mail = returnUpdateEmail(settings, {
+        reference: (request.order_reference as string | null) ?? null,
+        status,
+        note,
+      });
+      await sendEmail({
+        ...mail,
+        to: request.email as string,
+        template: `return_${status}`,
+      });
+    }
+  }
+
   revalidatePath("/admin/returns");
   redirect("/admin/returns");
+}
+
+/** Verifies provider, sender address and deliverability in one click. */
+export async function sendTestEmail() {
+  await requireSection("settings");
+  const settings = await getSettings();
+  const target = settings.email_from;
+  if (!target) {
+    redirect("/admin/settings?error=Absenderadresse+fehlt");
+  }
+  const { testEmail } = await import("@/lib/email/templates");
+  const result = await sendEmail({
+    ...testEmail(settings),
+    to: target,
+    template: "test",
+  });
+  redirect(
+    result.ok
+      ? "/admin/settings?saved=testmail"
+      : `/admin/settings?error=${encodeURIComponent(result.error ?? "Versand fehlgeschlagen")}`,
+  );
+}
+
+export async function saveEmailSettings(form: FormData) {
+  await patchSettings(
+    {
+      email_from: nullable(form, "email_from"),
+      email_from_name: nullable(form, "email_from_name"),
+      email_reply_to: nullable(form, "email_reply_to"),
+      email_order_confirmation: bool(form, "email_order_confirmation"),
+      email_shipping_notification: bool(form, "email_shipping_notification"),
+      email_return_updates: bool(form, "email_return_updates"),
+      carrier_default: nullable(form, "carrier_default"),
+      parcel_weight_g: Math.max(1, int(form, "parcel_weight_g", 500)),
+    },
+    "email",
+  );
 }

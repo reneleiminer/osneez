@@ -38,6 +38,16 @@ export interface Settings {
   delivery_min_days: number;
   delivery_max_days: number;
 
+  email_from: string | null;
+  email_from_name: string | null;
+  email_reply_to: string | null;
+  email_order_confirmation: boolean;
+  email_shipping_notification: boolean;
+  email_return_updates: boolean;
+
+  carrier_default: string | null;
+  parcel_weight_g: number;
+
   /** Empty = let Stripe pick from the dashboard configuration. */
   payment_methods: string[];
   automatic_tax: boolean;

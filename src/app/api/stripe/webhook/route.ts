@@ -1,5 +1,8 @@
 import Stripe from "stripe";
 
+import { alreadySent, sendEmail } from "@/lib/email/send";
+import { orderConfirmationEmail } from "@/lib/email/templates";
+import { getSettings } from "@/lib/settings";
 import { getSupabaseAdminClient } from "@/lib/supabase/admin";
 
 export const runtime = "nodejs";
@@ -59,7 +62,7 @@ export async function POST(request: Request) {
     console.error("[osneez] could not list line items:", error);
   }
 
-  const { error } = await supabase.from("orders").upsert(
+  const { data: saved, error } = await supabase.from("orders").upsert(
     {
       stripe_session_id: session.id,
       stripe_payment_intent:
@@ -88,12 +91,36 @@ export async function POST(request: Request) {
       metadata: session.metadata ?? null,
     },
     { onConflict: "stripe_session_id" },
-  );
+  )
+    .select("id")
+    .single();
 
   if (error) {
     console.error("[osneez] order upsert failed:", error);
     // 500 makes Stripe retry the delivery.
     return Response.json({ error: "Order sync failed." }, { status: 500 });
+  }
+
+  // Order confirmation. Sent once per order and never allowed to fail the
+  // webhook — Stripe would otherwise retry a payment we already recorded.
+  const settings = await getSettings();
+  const orderId = saved?.id as string | undefined;
+  if (
+    orderId &&
+    settings.email_order_confirmation &&
+    session.payment_status === "paid" &&
+    session.customer_details?.email &&
+    !(await alreadySent(orderId, "order_confirmation"))
+  ) {
+    const mail = orderConfirmationEmail(settings, {
+      reference: session.id.slice(-8).toUpperCase(),
+      amountTotal: session.amount_total ?? 0,
+      lines: (items?.data ?? []).map((item) => ({
+        description: item.description ?? "Artikel",
+        quantity: item.quantity ?? 1,
+      })),
+    });
+    await sendEmail({ ...mail, to: session.customer_details.email, template: "order_confirmation", orderId });
   }
 
   return Response.json({ received: true, stored: true });

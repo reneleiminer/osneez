@@ -7,12 +7,16 @@ import {
   Notice,
   TextArea,
 } from "@/components/admin/ui";
+import { KNOWN_CARRIERS } from "@/lib/carriers/tracking";
+import { emailProvider } from "@/lib/email/send";
 import { getSettings, isCompanyComplete } from "@/lib/settings";
 import {
   saveCompanySettings,
+  saveEmailSettings,
   savePaymentSettings,
   saveShippingSettings,
   saveShopSettings,
+  sendTestEmail,
 } from "../../actions";
 
 /** Stripe payment method types that make sense for a German/EU storefront. */
@@ -33,11 +37,12 @@ const euros = (cents: number) => (cents / 100).toFixed(2);
 export default async function AdminSettingsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ saved?: string }>;
+  searchParams: Promise<{ saved?: string; error?: string }>;
 }) {
   await requireSection("settings");
-  const { saved } = await searchParams;
+  const { saved, error } = await searchParams;
   const settings = await getSettings();
+  const provider = emailProvider();
 
   return (
     <div className="grid gap-8">
@@ -47,6 +52,7 @@ export default async function AdminSettingsPage({
       />
 
       {saved ? <Notice tone="success">Gespeichert ({saved}).</Notice> : null}
+      {error ? <Notice tone="error">{error}</Notice> : null}
 
       {!isCompanyComplete(settings) ? (
         <Notice tone="error">
@@ -211,6 +217,117 @@ export default async function AdminSettingsPage({
           </p>
           <button type="submit" className="os-btn os-btn-signal justify-self-start">
             Versand speichern
+          </button>
+        </form>
+      </Card>
+
+      <Card title="E-Mail und Versanddienstleister">
+        <div className="mb-6 border-l-2 border-steel bg-asphalt/60 px-4 py-3">
+          <p className="os-label text-[0.5625rem] text-smoke">Anbieter</p>
+          <p className="mt-2 text-xs leading-relaxed text-smoke">
+            {provider === "resend" ? (
+              <>
+                Resend ist aktiv (<code className="text-bone">RESEND_API_KEY</code>{" "}
+                gesetzt).
+              </>
+            ) : provider === "smtp" ? (
+              <>
+                SMTP ist aktiv (<code className="text-bone">SMTP_URL</code>{" "}
+                gesetzt).
+              </>
+            ) : (
+              <>
+                Kein Anbieter verbunden. Setze in Vercel entweder{" "}
+                <code className="text-bone">RESEND_API_KEY</code> (kostenloses
+                Kontingent, keine eigene Infrastruktur) oder{" "}
+                <code className="text-bone">SMTP_URL</code> im Format{" "}
+                <code className="text-bone">
+                  smtps://user:passwort@mail.host:465
+                </code>
+                . Schlüssel gehören in Environment Variables, nicht hierher —
+                diese Tabelle ist öffentlich lesbar.
+              </>
+            )}
+          </p>
+        </div>
+
+        <form action={saveEmailSettings} className="grid gap-5">
+          <div className="grid gap-5 md:grid-cols-3">
+            <Field
+              label="Absenderadresse"
+              name="email_from"
+              type="email"
+              defaultValue={settings.email_from}
+              hint="Muss beim Anbieter verifiziert sein"
+            />
+            <Field
+              label="Absendername"
+              name="email_from_name"
+              defaultValue={settings.email_from_name}
+            />
+            <Field
+              label="Antwortadresse"
+              name="email_reply_to"
+              type="email"
+              defaultValue={settings.email_reply_to}
+            />
+          </div>
+
+          <div className="grid gap-4 border-t os-rule pt-6">
+            <Checkbox
+              label="Bestellbestätigung senden"
+              name="email_order_confirmation"
+              defaultChecked={settings.email_order_confirmation}
+            />
+            <Checkbox
+              label="Versandbenachrichtigung senden"
+              name="email_shipping_notification"
+              defaultChecked={settings.email_shipping_notification}
+            />
+            <Checkbox
+              label="Retouren-Updates senden"
+              name="email_return_updates"
+              defaultChecked={settings.email_return_updates}
+            />
+          </div>
+
+          <div className="grid gap-5 border-t os-rule pt-6 md:grid-cols-3">
+            <div>
+              <label htmlFor="carrier_default" className="os-eyebrow block">
+                Standard-Dienstleister
+              </label>
+              <input
+                id="carrier_default"
+                name="carrier_default"
+                list="known-carriers"
+                defaultValue={settings.carrier_default ?? ""}
+                className="os-input"
+              />
+              <datalist id="known-carriers">
+                {KNOWN_CARRIERS.map((carrier) => (
+                  <option key={carrier} value={carrier} />
+                ))}
+              </datalist>
+              <p className="mt-1 text-[0.625rem] text-smoke">
+                Tracking-Links entstehen daraus automatisch
+              </p>
+            </div>
+            <Field
+              label="Standardgewicht (g)"
+              name="parcel_weight_g"
+              type="number"
+              defaultValue={settings.parcel_weight_g}
+            />
+          </div>
+
+          <button type="submit" className="os-btn os-btn-signal justify-self-start">
+            E-Mail speichern
+          </button>
+        </form>
+
+        <form action={sendTestEmail} className="mt-6 border-t os-rule pt-6">
+          <button type="submit" className="os-btn os-btn-ghost">
+            Testmail an die Absenderadresse
           </button>
         </form>
       </Card>
