@@ -1,16 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Anton, Archivo } from "next/font/google";
 
-import { CartDrawer } from "@/components/cart/cart-drawer";
-import { CartProvider } from "@/components/cart/cart-provider";
-import { PageTransition } from "@/components/layout/page-transition";
-import { SiteFooter } from "@/components/layout/site-footer";
-import { SiteHeader } from "@/components/layout/site-header";
-import { AnnouncementBar } from "@/components/layout/announcement-bar";
-import { primaryImage } from "@/lib/shop/product";
-import { getProducts } from "@/lib/shop/queries";
 import { SITE } from "@/lib/site";
-import type { SearchItem } from "@/types/shop";
 
 import "./globals.css";
 
@@ -64,29 +55,16 @@ export const viewport: Viewport = {
   colorScheme: "dark",
 };
 
-export default async function RootLayout({ children }: LayoutProps<"/">) {
-  const products = await getProducts();
-  const searchItems: SearchItem[] = products.map((product) => ({
-    slug: product.slug,
-    name: product.name,
-    subtitle: product.subtitle,
-    price: product.price,
-    category: product.category,
-    image: primaryImage(product)?.image_url ?? null,
-    status: product.status,
-  }));
-
+/**
+ * Root layout holds only the document shell. Storefront chrome lives in
+ * (site)/layout.tsx, the admin brings its own — so /admin never renders a
+ * shop header or cart.
+ */
+export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="de" className={`${anton.variable} ${archivo.variable}`}>
       <body className="min-h-dvh antialiased">
-        <CartProvider>
-          <AnnouncementBar />
-          <SiteHeader searchItems={searchItems} />
-          <main id="main">{children}</main>
-          <SiteFooter />
-          <CartDrawer />
-          <PageTransition />
-        </CartProvider>
+        {children}
         <div className="os-grain" aria-hidden="true" />
       </body>
     </html>

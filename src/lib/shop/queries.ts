@@ -30,20 +30,20 @@ function sortProduct(product: Product): Product {
 }
 
 /**
- * Every query degrades gracefully: if Supabase is missing, unreachable or the
- * table is still empty, the bundled seed catalogue is used instead. Errors are
- * logged once and never bubble up into the render tree.
+ * Falls back to the bundled seed catalogue only when Supabase is not
+ * configured or the request fails. A successful but empty result is trusted:
+ * once the database is live, a deleted product must stay deleted instead of
+ * reappearing from the seed data.
  */
 async function withFallback<T>(
   label: string,
-  run: () => Promise<T | null>,
+  run: () => Promise<T>,
   fallback: T,
 ): Promise<T> {
   const client = getSupabaseReadClient();
   if (!client) return fallback;
   try {
-    const result = await run();
-    return result ?? fallback;
+    return await run();
   } catch (error) {
     console.error(`[osneez] Supabase query "${label}" failed:`, error);
     return fallback;
@@ -88,7 +88,7 @@ export async function getProducts(
     "getProducts",
     async () => {
       const client = getSupabaseReadClient();
-      if (!client) return null;
+      if (!client) return [];
 
       let collectionId: string | null = null;
       if (filter.collectionSlug) {
@@ -126,8 +126,8 @@ export async function getProducts(
 
       const { data, error } = await query;
       if (error) throw error;
-      if (!data?.length) return null;
-      return (data as unknown as Product[]).map(sortProduct);
+      // An empty catalogue is a valid answer once the database is live.
+      return ((data ?? []) as unknown as Product[]).map(sortProduct);
     },
     filterSeed(filter),
   );
@@ -139,7 +139,7 @@ export async function getProductBySlug(slug: string): Promise<Product | null> {
     "getProductBySlug",
     async () => {
       const client = getSupabaseReadClient();
-      if (!client) return null;
+      if (!client) return seed;
       const { data, error } = await client
         .from("products")
         .select(PRODUCT_SELECT)
@@ -159,14 +159,14 @@ export async function getCollections(): Promise<Collection[]> {
     "getCollections",
     async () => {
       const client = getSupabaseReadClient();
-      if (!client) return null;
+      if (!client) return [];
       const { data, error } = await client
         .from("collections")
         .select("*")
         .eq("active", true)
         .order("sort_order", { ascending: true });
       if (error) throw error;
-      return data?.length ? (data as Collection[]) : null;
+      return (data ?? []) as Collection[];
     },
     SEED_COLLECTIONS,
   );
@@ -184,14 +184,14 @@ export async function getDrops(): Promise<Drop[]> {
     "getDrops",
     async () => {
       const client = getSupabaseReadClient();
-      if (!client) return null;
+      if (!client) return [];
       const { data, error } = await client
         .from("drops")
         .select("*")
         .eq("active", true)
         .order("release_date", { ascending: false });
       if (error) throw error;
-      return data?.length ? (data as Drop[]) : null;
+      return (data ?? []) as Drop[];
     },
     SEED_DROPS,
   );
@@ -222,13 +222,13 @@ export async function getWorldStories(): Promise<WorldStory[]> {
     "getWorldStories",
     async () => {
       const client = getSupabaseReadClient();
-      if (!client) return null;
+      if (!client) return [];
       const { data, error } = await client
         .from("world_stories")
         .select("*")
         .order("published_at", { ascending: false });
       if (error) throw error;
-      return data?.length ? (data as WorldStory[]) : null;
+      return (data ?? []) as WorldStory[];
     },
     SEED_WORLD,
   );

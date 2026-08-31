@@ -2,26 +2,26 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { ProductVisual } from "@/components/ui/product-visual";
 import { formatPrice } from "@/lib/format";
 import { CATEGORIES } from "@/lib/site";
 import type { SearchItem } from "@/types/shop";
 
-const SUGGESTIONS = ["hoodie", "tee", "drop 001", "cap"];
+const SUGGESTIONS = ["hoodie", "tee", "zipper", "cap"];
 
 export function SearchOverlay({
-  items,
   open,
   onClose,
 }: {
-  items: SearchItem[];
   open: boolean;
   onClose: () => void;
 }) {
   const router = useRouter();
   const [term, setTerm] = useState("");
+  const [results, setResults] = useState<SearchItem[]>([]);
+  const [pending, setPending] = useState(false);
   const [cursor, setCursor] = useState(0);
   const inputRef = useRef<HTMLInputElement | null>(null);
 
@@ -36,22 +36,42 @@ export function SearchOverlay({
     };
   }, [open]);
 
-  const results = useMemo(() => {
-    const needle = term.trim().toLowerCase();
-    if (needle.length < 1) return [];
-    return items
-      .filter((item) =>
-        [item.name, item.subtitle ?? "", item.category, item.slug]
-          .join(" ")
-          .toLowerCase()
-          .includes(needle),
-      )
-      .slice(0, 6);
-  }, [items, term]);
+  // Debounced lookup against /api/search. State only changes from async
+  // callbacks, never synchronously inside the effect body.
+  useEffect(() => {
+    const needle = term.trim();
+    if (!needle) return;
+
+    const controller = new AbortController();
+    const timer = window.setTimeout(() => {
+      setPending(true);
+      fetch(`/api/search?q=${encodeURIComponent(needle)}`, {
+        signal: controller.signal,
+      })
+        .then((response) => response.json() as Promise<{ items?: SearchItem[] }>)
+        .then((data) => {
+          setResults(data.items ?? []);
+          setCursor(0);
+          setPending(false);
+        })
+        .catch(() => {
+          /* aborted or offline — keep the previous results */
+        });
+    }, 180);
+
+    return () => {
+      window.clearTimeout(timer);
+      controller.abort();
+    };
+  }, [term]);
 
   function search(value: string) {
     setTerm(value);
     setCursor(0);
+    if (!value.trim()) {
+      setResults([]);
+      setPending(false);
+    }
   }
 
   function onKeyDown(event: React.KeyboardEvent<HTMLDivElement>) {
@@ -77,6 +97,8 @@ export function SearchOverlay({
       router.push(`/shop/${target.slug}`);
     }
   }
+
+  const hasTerm = term.trim().length > 0;
 
   return (
     <div
@@ -125,7 +147,7 @@ export function SearchOverlay({
         </div>
 
         <div className="mt-8 flex-1 overflow-y-auto">
-          {term.trim().length === 0 ? (
+          {!hasTerm ? (
             <div className="grid gap-10 md:grid-cols-2">
               <div>
                 <p className="os-eyebrow mb-4">Try</p>
@@ -163,17 +185,26 @@ export function SearchOverlay({
               </div>
             </div>
           ) : results.length === 0 ? (
-            <p className="max-w-[40ch] text-sm leading-relaxed text-smoke">
-              Kein Treffer für „{term}“. Probier einen anderen Begriff oder sieh
-              dir den kompletten{" "}
-              <Link
-                href="/shop"
-                onClick={onClose}
-                className="os-underline text-bone"
-              >
-                Shop
-              </Link>{" "}
-              an.
+            <p
+              aria-live="polite"
+              className="max-w-[40ch] text-sm leading-relaxed text-smoke"
+            >
+              {pending ? (
+                "Suche läuft …"
+              ) : (
+                <>
+                  Kein Treffer für „{term}“. Probier einen anderen Begriff oder
+                  sieh dir den kompletten{" "}
+                  <Link
+                    href="/shop"
+                    onClick={onClose}
+                    className="os-underline text-bone"
+                  >
+                    Shop
+                  </Link>{" "}
+                  an.
+                </>
+              )}
             </p>
           ) : (
             <ul

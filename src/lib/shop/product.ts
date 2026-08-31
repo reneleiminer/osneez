@@ -1,4 +1,4 @@
-import type { Product, ProductVariant } from "@/types/shop";
+import type { Product, ProductVariant, SearchItem } from "@/types/shop";
 import { CATEGORIES } from "@/lib/site";
 
 export function categoryLabel(slug: string): string {
@@ -70,4 +70,17 @@ export function visualSeed(key: string): number {
     hash = Math.imul(hash, 16777619);
   }
   return Math.abs(hash);
+}
+
+/** Slim projection of the catalogue for the client-side search overlay. */
+export function buildSearchItems(products: Product[]): SearchItem[] {
+  return products.map((product) => ({
+    slug: product.slug,
+    name: product.name,
+    subtitle: product.subtitle,
+    price: product.price,
+    category: product.category,
+    image: primaryImage(product)?.image_url ?? null,
+    status: product.status,
+  }));
 }

@@ -6,11 +6,11 @@ import { useEffect, useState } from "react";
 
 import { useCart } from "@/components/cart/cart-provider";
 import { PRIMARY_NAV } from "@/lib/site";
-import type { SearchItem } from "@/types/shop";
+
 import { MobileMenu } from "./mobile-menu";
 import { SearchOverlay } from "./search-overlay";
 
-export function SiteHeader({ searchItems }: { searchItems: SearchItem[] }) {
+export function SiteHeader() {
   const pathname = usePathname();
   const { count, open: openBag } = useCart();
   const [scrolled, setScrolled] = useState(false);
@@ -118,7 +118,6 @@ export function SiteHeader({ searchItems }: { searchItems: SearchItem[] }) {
         }}
       />
       <SearchOverlay
-        items={searchItems}
         open={searchOpen}
         onClose={() => setSearchOpen(false)}
       />

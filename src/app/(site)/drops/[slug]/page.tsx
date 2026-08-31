@@ -7,7 +7,8 @@ import { ProductVisual } from "@/components/ui/product-visual";
 import { formatDropDate, isReleased } from "@/lib/format";
 import { getDropBySlug, getDrops, getProducts } from "@/lib/shop/queries";
 
-export const revalidate = 300;
+// No time-based revalidation: notFound() would otherwise be cached and served
+// with a 200 status. Freshness comes from revalidatePath() in the admin.
 
 export async function generateStaticParams() {
   const drops = await getDrops();
