@@ -1,3 +1,4 @@
+import { requireSection } from "@/lib/supabase/auth";
 import {
   AdminHeading,
   Card,
@@ -22,6 +23,7 @@ export default async function AdminDropsPage({
 }: {
   searchParams: Promise<{ saved?: string }>;
 }) {
+  await requireSection("drops");
   const { saved } = await searchParams;
   const drops = await listDrops();
 

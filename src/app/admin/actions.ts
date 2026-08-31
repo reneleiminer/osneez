@@ -3,17 +3,27 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
-import { createAuthClient, requireAdmin } from "@/lib/supabase/auth";
+import {
+  requireSection,
+  createAuthClient,
+  type AdminSection,
+} from "@/lib/supabase/auth";
 import { getSupabaseAdminClient } from "@/lib/supabase/admin";
 import { STORAGE_BUCKETS } from "@/lib/supabase/config";
+import {
+  createStripeDiscount,
+  deleteStripeDiscount,
+  setStripeDiscountActive,
+  stripeConfigured,
+} from "@/lib/stripe/discounts";
 
 /**
  * Every mutation goes through here: the session is verified first, and only
  * then is the service-role client handed out. The service role bypasses RLS,
  * so this guard is the only thing standing between a request and the data.
  */
-async function guard() {
-  await requireAdmin();
+async function guard(section: AdminSection) {
+  await requireSection(section);
   const db = getSupabaseAdminClient();
   if (!db) {
     throw new Error(
@@ -96,7 +106,7 @@ export async function signOut() {
 /* -------------------------------------------------------------------------- */
 
 export async function saveProduct(form: FormData) {
-  const db = await guard();
+  const db = await guard("products");
   const id = nullable(form, "id");
   const name = str(form, "name");
   const slug = slugify(str(form, "slug") || name);
@@ -138,7 +148,7 @@ export async function saveProduct(form: FormData) {
 }
 
 export async function deleteProduct(form: FormData) {
-  const db = await guard();
+  const db = await guard("products");
   const { error } = await db
     .from("products")
     .delete()
@@ -149,7 +159,7 @@ export async function deleteProduct(form: FormData) {
 }
 
 export async function saveVariant(form: FormData) {
-  const db = await guard();
+  const db = await guard("products");
   const id = nullable(form, "id");
   const productId = str(form, "product_id");
   const size = str(form, "size");
@@ -176,7 +186,7 @@ export async function saveVariant(form: FormData) {
 }
 
 export async function deleteVariant(form: FormData) {
-  const db = await guard();
+  const db = await guard("products");
   const productId = str(form, "product_id");
   const { error } = await db
     .from("product_variants")
@@ -192,7 +202,7 @@ export async function deleteVariant(form: FormData) {
 /* -------------------------------------------------------------------------- */
 
 export async function uploadProductImage(form: FormData) {
-  const db = await guard();
+  const db = await guard("products");
   const productId = str(form, "product_id");
   const productSlug = slugify(str(form, "product_slug")) || productId;
   const file = form.get("file");
@@ -233,7 +243,7 @@ export async function uploadProductImage(form: FormData) {
 }
 
 export async function deleteProductImage(form: FormData) {
-  const db = await guard();
+  const db = await guard("products");
   const productId = str(form, "product_id");
   const url = str(form, "image_url");
 
@@ -260,7 +270,7 @@ export async function deleteProductImage(form: FormData) {
 /* -------------------------------------------------------------------------- */
 
 export async function saveCollection(form: FormData) {
-  const db = await guard();
+  const db = await guard("collections");
   const id = nullable(form, "id");
   const payload = {
     slug: slugify(str(form, "slug") || str(form, "name")),
@@ -279,7 +289,7 @@ export async function saveCollection(form: FormData) {
 }
 
 export async function deleteCollection(form: FormData) {
-  const db = await guard();
+  const db = await guard("collections");
   const { error } = await db
     .from("collections")
     .delete()
@@ -290,7 +300,7 @@ export async function deleteCollection(form: FormData) {
 }
 
 export async function saveDrop(form: FormData) {
-  const db = await guard();
+  const db = await guard("drops");
   const id = nullable(form, "id");
   const release = str(form, "release_date");
   const payload = {
@@ -312,7 +322,7 @@ export async function saveDrop(form: FormData) {
 }
 
 export async function deleteDrop(form: FormData) {
-  const db = await guard();
+  const db = await guard("drops");
   const { error } = await db.from("drops").delete().eq("id", str(form, "id"));
   if (error) throw new Error(error.message);
   flush();
@@ -320,7 +330,7 @@ export async function deleteDrop(form: FormData) {
 }
 
 export async function saveWorldStory(form: FormData) {
-  const db = await guard();
+  const db = await guard("world");
   const id = nullable(form, "id");
   const published = str(form, "published_at");
   const payload = {
@@ -343,7 +353,7 @@ export async function saveWorldStory(form: FormData) {
 }
 
 export async function deleteWorldStory(form: FormData) {
-  const db = await guard();
+  const db = await guard("world");
   const { error } = await db
     .from("world_stories")
     .delete()
@@ -358,7 +368,7 @@ export async function deleteWorldStory(form: FormData) {
 /* -------------------------------------------------------------------------- */
 
 export async function updateOrderStatus(form: FormData) {
-  const db = await guard();
+  const db = await guard("orders");
   const { error } = await db
     .from("orders")
     .update({ status: str(form, "status") })
@@ -369,7 +379,7 @@ export async function updateOrderStatus(form: FormData) {
 }
 
 export async function toggleSubscriber(form: FormData) {
-  const db = await guard();
+  const db = await guard("newsletter");
   const { error } = await db
     .from("newsletter_subscribers")
     .update({ active: str(form, "active") === "true" })
@@ -392,7 +402,7 @@ function list(form: FormData, key: string): string[] {
 }
 
 async function patchSettings(patch: Record<string, unknown>, section: string) {
-  const db = await guard();
+  const db = await guard("settings");
   const { error } = await db
     .from("settings")
     .update(patch)
@@ -476,7 +486,7 @@ export async function savePaymentSettings(form: FormData) {
 /* -------------------------------------------------------------------------- */
 
 export async function saveLegalPage(form: FormData) {
-  const db = await guard();
+  const db = await guard("legal");
   const slug = str(form, "slug");
   const { error } = await db.from("legal_pages").upsert(
     {
@@ -494,10 +504,153 @@ export async function saveLegalPage(form: FormData) {
 }
 
 export async function resetLegalPage(form: FormData) {
-  const db = await guard();
+  const db = await guard("legal");
   const slug = str(form, "slug");
   const { error } = await db.from("legal_pages").delete().eq("slug", slug);
   if (error) throw new Error(error.message);
   flush(`/${slug}`);
   redirect(`/admin/legal/${slug}?reset=1`);
+}
+
+/* -------------------------------------------------------------------------- */
+/* Discounts                                                                  */
+/* -------------------------------------------------------------------------- */
+
+export async function createDiscount(form: FormData) {
+  const db = await guard("discounts");
+  const code = str(form, "code").toUpperCase().replace(/\s+/g, "");
+  const kind = str(form, "kind") === "amount" ? "amount" : "percent";
+  const rawValue = str(form, "value").replace(",", ".");
+  const value =
+    kind === "percent"
+      ? Math.round(Number.parseFloat(rawValue))
+      : Math.round(Number.parseFloat(rawValue) * 100);
+
+  if (!code) redirect("/admin/discounts?error=Code+fehlt");
+  if (!Number.isFinite(value) || value <= 0) {
+    redirect("/admin/discounts?error=Ungültiger+Wert");
+  }
+  if (kind === "percent" && value > 100) {
+    redirect("/admin/discounts?error=Prozentwert+über+100");
+  }
+
+  const minSubtotal = str(form, "min_subtotal") ? cents(form, "min_subtotal") : null;
+  const maxRedemptions = str(form, "max_redemptions")
+    ? Math.max(1, int(form, "max_redemptions", 1))
+    : null;
+  const expiresRaw = str(form, "expires_at");
+  const expiresAt = expiresRaw ? new Date(expiresRaw).toISOString() : null;
+
+  let couponId: string | null = null;
+  let promotionCodeId: string | null = null;
+
+  if (stripeConfigured()) {
+    try {
+      const created = await createStripeDiscount({
+        code,
+        kind,
+        value,
+        minSubtotal,
+        maxRedemptions,
+        expiresAt,
+      });
+      couponId = created.couponId;
+      promotionCodeId = created.promotionCodeId;
+    } catch (error) {
+      console.error("[osneez] Stripe discount creation failed:", error);
+      redirect("/admin/discounts?error=Stripe+hat+den+Code+abgelehnt");
+    }
+  }
+
+  const { error } = await db.from("discounts").insert({
+    code,
+    description: nullable(form, "description"),
+    kind,
+    value,
+    min_subtotal: minSubtotal,
+    max_redemptions: maxRedemptions,
+    expires_at: expiresAt,
+    active: true,
+    stripe_coupon_id: couponId,
+    stripe_promotion_code_id: promotionCodeId,
+  });
+  if (error) {
+    redirect(`/admin/discounts?error=${encodeURIComponent(error.message)}`);
+  }
+
+  revalidatePath("/admin/discounts");
+  redirect("/admin/discounts?saved=1");
+}
+
+export async function toggleDiscount(form: FormData) {
+  const db = await guard("discounts");
+  const id = str(form, "id");
+  const active = str(form, "active") === "true";
+  const promotionCodeId = nullable(form, "stripe_promotion_code_id");
+
+  if (promotionCodeId && stripeConfigured()) {
+    try {
+      await setStripeDiscountActive(promotionCodeId, active);
+    } catch (error) {
+      console.error("[osneez] could not update promotion code:", error);
+    }
+  }
+
+  const { error } = await db.from("discounts").update({ active }).eq("id", id);
+  if (error) throw new Error(error.message);
+  revalidatePath("/admin/discounts");
+  redirect("/admin/discounts");
+}
+
+export async function deleteDiscount(form: FormData) {
+  const db = await guard("discounts");
+  await deleteStripeDiscount(nullable(form, "stripe_coupon_id"));
+  const { error } = await db
+    .from("discounts")
+    .delete()
+    .eq("id", str(form, "id"));
+  if (error) throw new Error(error.message);
+  revalidatePath("/admin/discounts");
+  redirect("/admin/discounts");
+}
+
+/* -------------------------------------------------------------------------- */
+/* Staff                                                                      */
+/* -------------------------------------------------------------------------- */
+
+export async function saveStaff(form: FormData) {
+  const db = await guard("staff");
+  const email = str(form, "email").toLowerCase();
+  const role = str(form, "role");
+
+  if (!email.includes("@")) {
+    redirect("/admin/staff?error=Ungültige+E-Mail-Adresse");
+  }
+  if (!["owner", "editor", "fulfilment"].includes(role)) {
+    redirect("/admin/staff?error=Unbekannte+Rolle");
+  }
+
+  const { error } = await db.from("staff").upsert(
+    {
+      email,
+      name: nullable(form, "name"),
+      role,
+      active: bool(form, "active"),
+    },
+    { onConflict: "email" },
+  );
+  if (error) {
+    redirect(`/admin/staff?error=${encodeURIComponent(error.message)}`);
+  }
+
+  revalidatePath("/admin/staff");
+  redirect("/admin/staff?saved=1");
+}
+
+export async function deleteStaff(form: FormData) {
+  const db = await guard("staff");
+  const { error } = await db.from("staff").delete().eq("id", str(form, "id"));
+  if (error) throw new Error(error.message);
+  revalidatePath("/admin/staff");
+  redirect("/admin/staff");
 }

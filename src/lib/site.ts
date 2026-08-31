@@ -67,6 +67,7 @@ export const FOOTER_NAV = {
     { label: "OSNEEZ World", href: "/world" },
     { label: "About", href: "/about" },
     { label: "Contact", href: "/contact" },
+    { label: "Account", href: "/account" },
   ],
   legal: [
     { label: "Shipping", href: "/shipping" },

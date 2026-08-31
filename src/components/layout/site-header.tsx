@@ -92,6 +92,12 @@ export function SiteHeader({ socials }: { socials: SocialLink[] }) {
           </nav>
 
           <div className="flex items-center gap-5">
+            <Link
+              href="/account"
+              className="os-label hidden text-[0.625rem] text-bone/80 transition-colors hover:text-bone lg:block"
+            >
+              Account
+            </Link>
             <button
               type="button"
               onClick={() => setSearchOpen(true)}

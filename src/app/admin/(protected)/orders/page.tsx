@@ -1,3 +1,4 @@
+import { requireSection } from "@/lib/supabase/auth";
 import { AdminHeading, Empty, Notice } from "@/components/admin/ui";
 import { listOrders } from "@/lib/admin/data";
 import { formatPrice } from "@/lib/format";
@@ -15,6 +16,7 @@ function formatDate(value: string): string {
 }
 
 export default async function AdminOrdersPage() {
+  await requireSection("orders");
   const orders = await listOrders();
 
   return (

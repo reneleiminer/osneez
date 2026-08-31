@@ -1,3 +1,4 @@
+import { requireSection } from "@/lib/supabase/auth";
 import {
   AdminHeading,
   Card,
@@ -20,6 +21,7 @@ export default async function AdminWorldPage({
 }: {
   searchParams: Promise<{ saved?: string }>;
 }) {
+  await requireSection("world");
   const { saved } = await searchParams;
   const stories = await listWorldStories();
 

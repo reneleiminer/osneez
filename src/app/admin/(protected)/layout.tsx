@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
-import { requireAdmin } from "@/lib/supabase/auth";
+import { canAccess, requireAdmin, type AdminSection } from "@/lib/supabase/auth";
 import { signOut } from "../actions";
 
 export const metadata: Metadata = {
@@ -11,24 +11,34 @@ export const metadata: Metadata = {
 
 export const dynamic = "force-dynamic";
 
-const NAV = [
-  { href: "/admin", label: "Overview" },
-  { href: "/admin/products", label: "Products" },
-  { href: "/admin/collections", label: "Collections" },
-  { href: "/admin/drops", label: "Drops" },
-  { href: "/admin/world", label: "World" },
-  { href: "/admin/orders", label: "Orders" },
-  { href: "/admin/newsletter", label: "Newsletter" },
-  { href: "/admin/legal", label: "Legal" },
-  { href: "/admin/settings", label: "Settings" },
-] as const;
+const NAV: { href: string; label: string; section: AdminSection }[] = [
+  { href: "/admin", label: "Overview", section: "overview" },
+  { href: "/admin/products", label: "Products", section: "products" },
+  { href: "/admin/collections", label: "Collections", section: "collections" },
+  { href: "/admin/drops", label: "Drops", section: "drops" },
+  { href: "/admin/world", label: "World", section: "world" },
+  { href: "/admin/discounts", label: "Discounts", section: "discounts" },
+  { href: "/admin/orders", label: "Orders", section: "orders" },
+  { href: "/admin/newsletter", label: "Newsletter", section: "newsletter" },
+  { href: "/admin/reports", label: "Reports", section: "reports" },
+  { href: "/admin/legal", label: "Legal", section: "legal" },
+  { href: "/admin/settings", label: "Settings", section: "settings" },
+  { href: "/admin/staff", label: "Team", section: "staff" },
+];
+
+const ROLE_LABEL: Record<string, string> = {
+  owner: "Inhaber",
+  editor: "Redaktion",
+  fulfilment: "Versand",
+};
 
 export default async function AdminLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const user = await requireAdmin();
+  const session = await requireAdmin();
+  const nav = NAV.filter((item) => canAccess(session.role, item.section));
 
   return (
     <div className="min-h-dvh bg-void">
@@ -49,7 +59,7 @@ export default async function AdminLayout({
               View shop
             </Link>
             <span className="os-label hidden text-[0.625rem] text-smoke md:block">
-              {user.email}
+              {session.email} · {ROLE_LABEL[session.role] ?? session.role}
             </span>
             <form action={signOut}>
               <button
@@ -64,7 +74,7 @@ export default async function AdminLayout({
 
         <nav aria-label="Admin" className="os-edge -mx-1 overflow-x-auto">
           <ul className="flex min-w-max gap-6 px-1 pb-3">
-            {NAV.map((item) => (
+            {nav.map((item) => (
               <li key={item.href}>
                 <Link
                   href={item.href}

@@ -58,3 +58,33 @@ export interface PublicSettings {
   freeShippingThreshold: number;
   shippingRate: number;
 }
+
+export type DiscountKind = "percent" | "amount";
+
+export interface Discount {
+  id: string;
+  code: string;
+  description: string | null;
+  kind: DiscountKind;
+  /** percent: 1–100. amount: cents. */
+  value: number;
+  min_subtotal: number | null;
+  max_redemptions: number | null;
+  expires_at: string | null;
+  active: boolean;
+  stripe_coupon_id: string | null;
+  stripe_promotion_code_id: string | null;
+  times_redeemed: number;
+  created_at: string;
+}
+
+export type StaffRole = "owner" | "editor" | "fulfilment";
+
+export interface StaffMember {
+  id: string;
+  email: string;
+  name: string | null;
+  role: StaffRole;
+  active: boolean;
+  created_at: string;
+}

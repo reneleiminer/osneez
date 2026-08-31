@@ -1,3 +1,4 @@
+import { requireSection } from "@/lib/supabase/auth";
 import Link from "next/link";
 
 import { AdminHeading, Notice } from "@/components/admin/ui";
@@ -13,6 +14,7 @@ const PAGES: { slug: LegalSlug; label: string; note: string }[] = [
 ];
 
 export default async function AdminLegalPage() {
+  await requireSection("legal");
   const pages = await Promise.all(
     PAGES.map(async (entry) => ({
       ...entry,

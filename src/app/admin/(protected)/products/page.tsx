@@ -1,3 +1,4 @@
+import { requireSection } from "@/lib/supabase/auth";
 import Link from "next/link";
 
 import { AdminHeading, Empty } from "@/components/admin/ui";
@@ -7,6 +8,7 @@ import { formatPrice } from "@/lib/format";
 import { categoryLabel, totalStock } from "@/lib/shop/product";
 
 export default async function AdminProductsPage() {
+  await requireSection("products");
   const products = await listProducts();
 
   return (

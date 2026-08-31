@@ -1,3 +1,4 @@
+import { requireSection } from "@/lib/supabase/auth";
 import {
   AdminHeading,
   Card,
@@ -14,6 +15,7 @@ export default async function AdminCollectionsPage({
 }: {
   searchParams: Promise<{ saved?: string }>;
 }) {
+  await requireSection("collections");
   const { saved } = await searchParams;
   const collections = await listCollections();
 

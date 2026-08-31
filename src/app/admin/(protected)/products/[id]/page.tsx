@@ -1,3 +1,4 @@
+import { requireSection } from "@/lib/supabase/auth";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
@@ -38,6 +39,7 @@ export default async function AdminProductPage({
   params: Promise<{ id: string }>;
   searchParams: Promise<{ saved?: string; error?: string }>;
 }) {
+  await requireSection("products");
   const { id } = await params;
   const { saved, error } = await searchParams;
   const isNew = id === "new";

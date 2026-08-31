@@ -1,11 +1,12 @@
 import { listSubscribers } from "@/lib/admin/data";
-import { getAdminUser } from "@/lib/supabase/auth";
+import { canAccess, getAdminSession } from "@/lib/supabase/auth";
 
 export const dynamic = "force-dynamic";
 
 /** Route handlers are not covered by the admin layout — guard explicitly. */
 export async function GET() {
-  if (!(await getAdminUser())) {
+  const session = await getAdminSession();
+  if (!session || !canAccess(session.role, "newsletter")) {
     return new Response("Not found", { status: 404 });
   }
 

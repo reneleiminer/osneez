@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
 import { Field, Notice } from "@/components/admin/ui";
-import { adminIsConfigured, getAdminUser } from "@/lib/supabase/auth";
+import { adminIsConfigured, getAdminSession } from "@/lib/supabase/auth";
 import { signIn } from "../actions";
 
 export const metadata: Metadata = {
@@ -18,7 +18,7 @@ export default async function AdminLoginPage({
   searchParams: Promise<{ error?: string }>;
 }) {
   const { error } = await searchParams;
-  if (await getAdminUser()) redirect("/admin");
+  if (await getAdminSession()) redirect("/admin");
 
   return (
     <div className="os-edge flex min-h-dvh flex-col justify-center py-16">

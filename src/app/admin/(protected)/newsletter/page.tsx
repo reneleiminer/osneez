@@ -1,3 +1,4 @@
+import { requireSection } from "@/lib/supabase/auth";
 import { AdminHeading, Empty } from "@/components/admin/ui";
 import { listSubscribers } from "@/lib/admin/data";
 import { toggleSubscriber } from "../../actions";
@@ -9,6 +10,7 @@ function formatDate(value: string): string {
 }
 
 export default async function AdminNewsletterPage() {
+  await requireSection("newsletter");
   const subscribers = await listSubscribers();
   const active = subscribers.filter((entry) => entry.active).length;
 

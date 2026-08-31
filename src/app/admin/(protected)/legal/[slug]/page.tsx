@@ -1,3 +1,4 @@
+import { requireSection } from "@/lib/supabase/auth";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
@@ -48,6 +49,7 @@ export default async function AdminLegalEditor({
   params: Promise<{ slug: string }>;
   searchParams: Promise<{ saved?: string; reset?: string }>;
 }) {
+  await requireSection("legal");
   const { slug } = await params;
   const { saved, reset } = await searchParams;
   if (!SLUGS.includes(slug as LegalSlug)) notFound();

@@ -126,8 +126,25 @@ carries `noindex`.
 | World | editorial entries for `/world` |
 | Orders | everything the Stripe webhook wrote, status switch to `fulfilled` |
 | Newsletter | subscriber list, unsubscribe toggle, CSV export |
+| Discounts | promo codes, mirrored into Stripe as coupon + promotion code |
+| Reports | revenue per day, bestsellers, order status, low stock, list growth |
 | Legal | editable imprint, privacy, terms, returns and shipping texts |
 | Settings | company data, storefront, shipping rates, accepted payment methods |
+| Team | staff accounts with owner / editor / fulfilment roles |
+
+**Roles.** `owner` sees everything. `editor` gets the catalogue, drops, world,
+discounts and legal texts. `fulfilment` sees orders only. Every screen *and*
+every server action is checked against the role, so a narrower account cannot
+reach a wider section by crafting a request. Addresses listed in `ADMIN_EMAILS`
+are always owners — that is the bootstrap, and it is what keeps you from
+locking yourself out by editing the `staff` table.
+
+**Customer accounts** live at `/account`. Sign-up and sign-in run on Supabase
+Auth; order history is matched on the email Stripe collected at checkout and
+read through the customer's own session, so the row level security policy —
+not application code — decides what comes back. Ordering as a guest stays
+possible. Password reset and email confirmation need SMTP configured in
+Supabase; the built-in sender is heavily rate limited.
 
 **Settings drive the storefront.** Company details, announcement lines, social
 links, hero media, shipping rates and countries, delivery estimates and the

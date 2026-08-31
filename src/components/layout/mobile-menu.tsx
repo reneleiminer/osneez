@@ -87,6 +87,16 @@ export function MobileMenu({
           <span aria-hidden="true">→</span>
         </button>
 
+        <Link
+          href="/account"
+          onClick={onClose}
+          tabIndex={open ? 0 : -1}
+          className="os-label mb-10 flex w-full items-center justify-between border os-rule px-4 py-4 text-[0.6875rem] text-smoke transition-colors hover:border-bone hover:text-bone"
+        >
+          Account
+          <span aria-hidden="true">→</span>
+        </Link>
+
         <div className="grid gap-3">
           <p className="os-eyebrow">Follow</p>
           <div className="flex gap-6">
