@@ -1,3 +1,13 @@
+-- Vorbedingung: bricht mit einer lesbaren Meldung ab, wenn eine
+-- vorherige Migration fehlt, statt mit einem rohen 42P01-Fehler.
+do $guard$
+begin
+  if to_regclass('public.orders') is null then
+    raise exception 'Zuerst % ausfuehren.', '0001_shop_schema.sql';
+  end if;
+end
+$guard$;
+
 -- =============================================================================
 -- OSNEEZ — shipping zones, fulfilment tracking and returns
 -- =============================================================================

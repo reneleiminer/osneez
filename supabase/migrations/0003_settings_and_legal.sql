@@ -1,3 +1,13 @@
+-- Vorbedingung: bricht mit einer lesbaren Meldung ab, wenn eine
+-- vorherige Migration fehlt, statt mit einem rohen 42P01-Fehler.
+do $guard$
+begin
+  if to_regprocedure('public.set_updated_at()') is null then
+    raise exception 'Zuerst % ausfuehren.', '0001_shop_schema.sql';
+  end if;
+end
+$guard$;
+
 -- =============================================================================
 -- OSNEEZ — company settings and editable legal pages
 -- Moves everything that was hard-coded in src/lib/site.ts into the database

@@ -1,3 +1,13 @@
+-- Vorbedingung: bricht mit einer lesbaren Meldung ab, wenn eine
+-- vorherige Migration fehlt, statt mit einem rohen 42P01-Fehler.
+do $guard$
+begin
+  if to_regclass('public.settings') is null then
+    raise exception 'Zuerst % ausfuehren.', '0003_settings_and_legal.sql';
+  end if;
+end
+$guard$;
+
 -- =============================================================================
 -- OSNEEZ — transactional email and carrier settings
 --

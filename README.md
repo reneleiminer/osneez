@@ -53,8 +53,14 @@ See `.env.example`. No secret values are committed.
 
 ## Database
 
-Run the migrations in `supabase/migrations` in order, either through the
-Supabase SQL editor or `supabase db push`:
+Run the migrations in `supabase/migrations` **in numerical order** — each one
+builds on the previous, and every file after the first starts with a guard that
+aborts with the name of the migration you still owe it rather than a raw
+Postgres error.
+
+Order: `0001` → `0002` (optional demo data) → `0003` → `0004` → `0005` → `0006`.
+
+Either through the Supabase SQL editor or `supabase db push`:
 
 1. `0001_shop_schema.sql` — tables, indexes, `updated_at` triggers, RLS
    policies and the four public storage buckets.

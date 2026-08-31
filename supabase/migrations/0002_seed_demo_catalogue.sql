@@ -1,3 +1,13 @@
+-- Vorbedingung: bricht mit einer lesbaren Meldung ab, wenn eine
+-- vorherige Migration fehlt, statt mit einem rohen 42P01-Fehler.
+do $guard$
+begin
+  if to_regclass('public.products') is null then
+    raise exception 'Zuerst % ausfuehren.', '0001_shop_schema.sql';
+  end if;
+end
+$guard$;
+
 -- =============================================================================
 -- OSNEEZ — demo catalogue
 -- Mirrors src/lib/shop/seed.ts so the database matches what the storefront
