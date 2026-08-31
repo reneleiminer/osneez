@@ -29,7 +29,7 @@ export async function generateMetadata({
     openGraph: {
       title: `${drop.name} — OSNEEZ®`,
       description: drop.description ?? undefined,
-      images: drop.hero_image ? [{ url: drop.hero_image }] : undefined,
+      ...(drop.hero_image ? { images: [{ url: drop.hero_image }] } : {}),
     },
   };
 }

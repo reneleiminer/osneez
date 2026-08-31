@@ -37,7 +37,9 @@ export async function generateMetadata({
       title: `${product.name} — OSNEEZ®`,
       description: product.description ?? SITE.description,
       url: `${SITE.url}/shop/${product.slug}`,
-      images: image ? [{ url: image }] : undefined,
+      // Only override the generated card when real photography exists —
+      // an explicit `undefined` would suppress the file-based OG image.
+      ...(image ? { images: [{ url: image }] } : {}),
     },
   };
 }

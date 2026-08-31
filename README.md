@@ -151,7 +151,12 @@ a stock photo. Replace by inserting rows into `product_images`.
 | Drop campaign key visual + hero film | `drops.hero_image` / `drops.hero_video` or `NEXT_PUBLIC_HERO_*` |
 | Collection covers | `collections.cover_image` / bucket `collections` |
 | OSNEEZ World editorial images | `world_stories.cover_image` / bucket `world` |
-| Favicon, OG image, brand mark | `src/app/` |
+
+The favicon (`src/app/icon.svg`) and the OpenGraph share cards are generated,
+not placeholders: `src/app/opengraph-image.tsx` renders the brand card and
+`src/app/shop/[slug]/opengraph-image.tsx` a per-product card, both in Anton via
+`next/og`. Once real photography exists, setting `openGraph.images` in a page's
+metadata overrides the generated card.
 
 Placeholder **copy** to replace before launch: contact addresses in
 `src/app/contact/page.tsx` and `src/lib/site.ts`, the size tables in

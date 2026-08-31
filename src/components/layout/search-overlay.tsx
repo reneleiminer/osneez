@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { ProductVisual } from "@/components/ui/product-visual";
@@ -19,6 +20,7 @@ export function SearchOverlay({
   open: boolean;
   onClose: () => void;
 }) {
+  const router = useRouter();
   const [term, setTerm] = useState("");
   const [cursor, setCursor] = useState(0);
   const inputRef = useRef<HTMLInputElement | null>(null);
@@ -67,6 +69,13 @@ export function SearchOverlay({
       event.preventDefault();
       setCursor((value) => (value - 1 + results.length) % results.length);
     }
+    if (event.key === "Enter") {
+      const target = results[cursor];
+      if (!target) return;
+      event.preventDefault();
+      onClose();
+      router.push(`/shop/${target.slug}`);
+    }
   }
 
   return (
@@ -103,6 +112,13 @@ export function SearchOverlay({
             onChange={(event) => search(event.target.value)}
             placeholder="Search OSNEEZ"
             autoComplete="off"
+            role="combobox"
+            aria-expanded={results.length > 0}
+            aria-controls="os-search-results"
+            aria-autocomplete="list"
+            aria-activedescendant={
+              results[cursor] ? `os-result-${results[cursor].slug}` : undefined
+            }
             tabIndex={open ? 0 : -1}
             className="os-display w-full bg-transparent text-[clamp(2rem,8vw,5rem)] tracking-tight outline-none placeholder:text-steel"
           />
@@ -160,9 +176,20 @@ export function SearchOverlay({
               an.
             </p>
           ) : (
-            <ul className="grid gap-px bg-bone/10">
+            <ul
+              id="os-search-results"
+              role="listbox"
+              aria-label="Suchergebnisse"
+              className="grid gap-px bg-bone/10"
+            >
               {results.map((item, index) => (
-                <li key={item.slug} className="bg-void">
+                <li
+                  key={item.slug}
+                  id={`os-result-${item.slug}`}
+                  role="option"
+                  aria-selected={index === cursor}
+                  className="bg-void"
+                >
                   <Link
                     href={`/shop/${item.slug}`}
                     onClick={onClose}
