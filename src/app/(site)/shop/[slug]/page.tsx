@@ -11,8 +11,9 @@ import { categoryLabel, primaryImage, totalStock } from "@/lib/shop/product";
 import { getProductBySlug, getProducts } from "@/lib/shop/queries";
 import { SITE } from "@/lib/site";
 
-// No time-based revalidation: notFound() would otherwise be cached and served
-// with a 200 status. Freshness comes from revalidatePath() in the admin.
+// Safe again now that the streaming loading.tsx is gone: notFound() can still
+// set a 404 status. Keeps direct database edits appearing without a redeploy.
+export const revalidate = 300;
 
 export async function generateStaticParams() {
   const products = await getProducts();
