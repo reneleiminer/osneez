@@ -126,6 +126,21 @@ carries `noindex`.
 | World | editorial entries for `/world` |
 | Orders | everything the Stripe webhook wrote, status switch to `fulfilled` |
 | Newsletter | subscriber list, unsubscribe toggle, CSV export |
+| Legal | editable imprint, privacy, terms, returns and shipping texts |
+| Settings | company data, storefront, shipping rates, accepted payment methods |
+
+**Settings drive the storefront.** Company details, announcement lines, social
+links, hero media, shipping rates and countries, delivery estimates and the
+accepted Stripe payment methods all live in the `settings` table — nothing of
+that is hard-coded any more. The constants in `src/lib/site.ts` are only the
+fallback used before the row exists.
+
+Legal texts live in `legal_pages`. Bodies are plain text where a line starting
+with `## ` opens a section, and `{{tokens}}` such as `{{legal_name}}` or
+`{{free_shipping}}` are resolved from the settings at render time. A field that
+is still empty renders as a visible `[Firmenname]` placeholder rather than
+disappearing. Pages flagged as drafts show a warning banner and carry
+`noindex`.
 
 Prices are typed in euros and stored as cents. Every mutation runs through a
 server action that verifies the session *before* touching the service-role

@@ -2,18 +2,23 @@ import Link from "next/link";
 
 import { TextReveal } from "@/components/motion/text-reveal";
 import { Reveal } from "@/components/motion/reveal";
-import { HERO_MEDIA } from "@/lib/site";
+import type { Settings } from "@/types/settings";
 import type { Drop } from "@/types/shop";
 
 /**
- * Full-bleed opening frame. Drop a campaign film in via
- * NEXT_PUBLIC_HERO_VIDEO_URL (+ NEXT_PUBLIC_HERO_POSTER_URL) or set
- * `hero_video` / `hero_image` on the drop row — until then the generated
+ * Full-bleed opening frame. The campaign film is set per drop (`hero_video` /
+ * `hero_image`) or globally under Settings → Shop; until then the generated
  * cinematic backdrop below stands in.
  */
-export function Hero({ drop }: { drop: Drop | null }) {
-  const video = drop?.hero_video ?? HERO_MEDIA.video;
-  const poster = drop?.hero_image ?? HERO_MEDIA.poster;
+export function Hero({
+  drop,
+  settings,
+}: {
+  drop: Drop | null;
+  settings: Settings;
+}) {
+  const video = drop?.hero_video ?? settings.hero_video_url;
+  const poster = drop?.hero_image ?? settings.hero_image_url;
 
   return (
     <section className="relative flex min-h-[calc(100svh-6.75rem)] flex-col justify-end overflow-hidden bg-void">

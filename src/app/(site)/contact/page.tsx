@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
-import { SITE } from "@/lib/site";
+import { formatAddress, getSettings, isCompanyComplete } from "@/lib/settings";
+
+export const revalidate = 300;
 
 export const metadata: Metadata = {
   title: "Contact",
@@ -10,25 +12,33 @@ export const metadata: Metadata = {
   alternates: { canonical: "/contact" },
 };
 
-const CHANNELS = [
-  {
-    title: "Orders & support",
-    line: "Bestellungen, Größen, Retouren, Lieferstatus.",
-    value: "[support@osneez.com]",
-  },
-  {
-    title: "Collabs & press",
-    line: "Kooperationen, Shootings, Presseanfragen.",
-    value: "[press@osneez.com]",
-  },
-  {
-    title: "Riders",
-    line: "Du fährst, baust oder shootest? Meld dich.",
-    value: "[riders@osneez.com]",
-  },
-];
+export default async function ContactPage() {
+  const settings = await getSettings();
 
-export default function ContactPage() {
+  const channels = [
+    {
+      title: "Orders & support",
+      line: "Bestellungen, Größen, Retouren, Lieferstatus.",
+      value: settings.support_email ?? settings.contact_email,
+    },
+    {
+      title: "Collabs & press",
+      line: "Kooperationen, Shootings, Presseanfragen.",
+      value: settings.press_email ?? settings.contact_email,
+    },
+  ].filter((channel): channel is { title: string; line: string; value: string } =>
+    Boolean(channel.value),
+  );
+
+  const socials = [
+    { label: "Instagram", href: settings.instagram_url },
+    { label: "TikTok", href: settings.tiktok_url },
+  ].filter((entry): entry is { label: string; href: string } =>
+    Boolean(entry.href),
+  );
+
+  const address = formatAddress(settings);
+
   return (
     <div className="os-edge py-14 lg:py-20">
       <header className="border-b os-rule pb-8">
@@ -42,55 +52,77 @@ export default function ContactPage() {
         </p>
       </header>
 
-      <div className="mt-8 border-l-2 border-signal bg-asphalt/60 px-5 py-4">
-        <p className="os-label text-[0.5625rem] text-signal">Platzhalter</p>
-        <p className="mt-2 max-w-[68ch] text-[0.75rem] leading-relaxed text-smoke">
-          Die unten stehenden Adressen sind Platzhalter. Vor dem Launch durch die
-          echten Postfächer ersetzen — hier und in{" "}
-          <code className="text-bone">src/lib/site.ts</code>.
-        </p>
-      </div>
-
-      <ul className="mt-12 grid gap-px bg-bone/10">
-        {CHANNELS.map((channel) => (
-          <li key={channel.title} className="bg-void py-8">
-            <div className="grid gap-3 md:grid-cols-12 md:items-baseline">
-              <p className="os-label text-[0.625rem] text-smoke md:col-span-3">
-                {channel.title}
-              </p>
-              <p className="os-display text-[clamp(1.5rem,4vw,2.5rem)] md:col-span-6">
-                {channel.value}
-              </p>
-              <p className="text-[0.75rem] leading-relaxed text-smoke md:col-span-3">
-                {channel.line}
-              </p>
-            </div>
-          </li>
-        ))}
-      </ul>
-
-      <div className="mt-16 grid gap-6 border-t os-rule pt-10 sm:grid-cols-2">
-        <div>
-          <p className="os-eyebrow mb-3">Social</p>
-          <div className="flex gap-6">
-            <a
-              href={SITE.instagram}
-              target="_blank"
-              rel="noreferrer noopener"
-              className="os-underline text-sm"
-            >
-              Instagram
-            </a>
-            <a
-              href={SITE.tiktok}
-              target="_blank"
-              rel="noreferrer noopener"
-              className="os-underline text-sm"
-            >
-              TikTok
-            </a>
-          </div>
+      {!isCompanyComplete(settings) ? (
+        <div className="mt-8 border-l-2 border-signal bg-asphalt/60 px-5 py-4">
+          <p className="os-label text-[0.5625rem] text-signal">
+            Kontaktdaten fehlen
+          </p>
+          <p className="mt-2 max-w-[68ch] text-[0.75rem] leading-relaxed text-smoke">
+            Die Firmen- und Kontaktdaten sind noch nicht vollständig hinterlegt.
+            Sie werden unter Admin → Settings → Unternehmen gepflegt und
+            erscheinen dann automatisch hier, im Impressum und im Footer.
+          </p>
         </div>
+      ) : null}
+
+      {channels.length ? (
+        <ul className="mt-12 grid gap-px bg-bone/10">
+          {channels.map((channel) => (
+            <li key={channel.title} className="bg-void py-8">
+              <div className="grid gap-3 md:grid-cols-12 md:items-baseline">
+                <p className="os-label text-[0.625rem] text-smoke md:col-span-3">
+                  {channel.title}
+                </p>
+                <p className="os-display text-[clamp(1.25rem,3.5vw,2.25rem)] break-all md:col-span-6">
+                  <a href={`mailto:${channel.value}`} className="os-underline">
+                    {channel.value}
+                  </a>
+                </p>
+                <p className="text-[0.75rem] leading-relaxed text-smoke md:col-span-3">
+                  {channel.line}
+                </p>
+              </div>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+
+      <div className="mt-16 grid gap-10 border-t os-rule pt-10 sm:grid-cols-3">
+        {address.length ? (
+          <div>
+            <p className="os-eyebrow mb-3">Anschrift</p>
+            <address className="text-sm leading-relaxed text-smoke not-italic">
+              {address.map((line) => (
+                <span key={line} className="block">
+                  {line}
+                </span>
+              ))}
+            </address>
+            {settings.phone ? (
+              <p className="mt-3 text-sm text-smoke">{settings.phone}</p>
+            ) : null}
+          </div>
+        ) : null}
+
+        {socials.length ? (
+          <div>
+            <p className="os-eyebrow mb-3">Social</p>
+            <div className="flex flex-wrap gap-6">
+              {socials.map((social) => (
+                <a
+                  key={social.label}
+                  href={social.href}
+                  target="_blank"
+                  rel="noreferrer noopener"
+                  className="os-underline text-sm"
+                >
+                  {social.label}
+                </a>
+              ))}
+            </div>
+          </div>
+        ) : null}
+
         <div>
           <p className="os-eyebrow mb-3">Legal</p>
           <div className="flex flex-wrap gap-6">

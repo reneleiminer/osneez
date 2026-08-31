@@ -5,7 +5,6 @@ import { useEffect, useRef, useState } from "react";
 
 import { ProductVisual } from "@/components/ui/product-visual";
 import { formatPrice } from "@/lib/format";
-import { FREE_SHIPPING_THRESHOLD } from "@/lib/site";
 import { useCart } from "./cart-provider";
 
 export function CartDrawer() {
@@ -19,6 +18,7 @@ export function CartDrawer() {
     setQuantity,
     remaining,
     qualifiesForFreeShipping,
+    freeShippingThreshold,
   } = useCart();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -61,7 +61,7 @@ export function CartDrawer() {
     }
   }
 
-  const progress = Math.min(100, (subtotal / FREE_SHIPPING_THRESHOLD) * 100);
+  const progress = Math.min(100, (subtotal / freeShippingThreshold) * 100);
 
   return (
     <div

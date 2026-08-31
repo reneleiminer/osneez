@@ -23,11 +23,14 @@ import {
 import { FREE_SHIPPING_THRESHOLD } from "@/lib/site";
 import type { CartLineView } from "@/types/shop";
 
+/** Threshold comes from the company settings; the constant is only a fallback. */
+
 type CartContextValue = {
   lines: CartLineView[];
   count: number;
   subtotal: number;
   isOpen: boolean;
+  freeShippingThreshold: number;
   remaining: number;
   qualifiesForFreeShipping: boolean;
   open: () => void;
@@ -40,7 +43,13 @@ type CartContextValue = {
 
 const CartContext = createContext<CartContextValue | null>(null);
 
-export function CartProvider({ children }: { children: ReactNode }) {
+export function CartProvider({
+  children,
+  freeShippingThreshold = FREE_SHIPPING_THRESHOLD,
+}: {
+  children: ReactNode;
+  freeShippingThreshold?: number;
+}) {
   const lines = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
   const [isOpen, setIsOpen] = useState(false);
 
@@ -75,8 +84,9 @@ export function CartProvider({ children }: { children: ReactNode }) {
       count,
       subtotal,
       isOpen,
-      remaining: Math.max(0, FREE_SHIPPING_THRESHOLD - subtotal),
-      qualifiesForFreeShipping: subtotal >= FREE_SHIPPING_THRESHOLD,
+      freeShippingThreshold,
+      remaining: Math.max(0, freeShippingThreshold - subtotal),
+      qualifiesForFreeShipping: subtotal >= freeShippingThreshold,
       open: () => setIsOpen(true),
       close: () => setIsOpen(false),
       add,
@@ -84,7 +94,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       remove: removeLine,
       clear: clearLines,
     };
-  }, [lines, isOpen, add]);
+  }, [lines, isOpen, add, freeShippingThreshold]);
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;
 }

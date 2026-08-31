@@ -1,13 +1,9 @@
 import Stripe from "stripe";
 import { z } from "zod";
 
+import { getSettings } from "@/lib/settings";
+import { SITE } from "@/lib/site";
 import { buildLineItems } from "@/lib/stripe/line-items";
-import {
-  FREE_SHIPPING_THRESHOLD,
-  SHIPPING_COUNTRIES,
-  SHIPPING_RATE,
-  SITE,
-} from "@/lib/site";
 
 export const runtime = "nodejs";
 
@@ -55,27 +51,35 @@ export async function POST(request: Request) {
     );
   }
 
+  const settings = await getSettings();
   const origin = request.headers.get("origin") ?? SITE.url;
-  const freeShipping = result.subtotal >= FREE_SHIPPING_THRESHOLD;
+  const freeShipping = result.subtotal >= settings.free_shipping_threshold;
 
   try {
     const stripe = new Stripe(secret);
     const session = await stripe.checkout.sessions.create({
       mode: "payment",
       line_items: result.lineItems,
-      automatic_tax: { enabled: true },
+      // An empty list means "use whatever is enabled in the Stripe dashboard",
+      // which is the recommended setup.
+      ...(settings.payment_methods.length
+        ? {
+            payment_method_types:
+              settings.payment_methods as Stripe.Checkout.SessionCreateParams.PaymentMethodType[],
+          }
+        : {}),
+      automatic_tax: { enabled: settings.automatic_tax },
       billing_address_collection: "required",
       shipping_address_collection: {
-        allowed_countries: [
-          ...SHIPPING_COUNTRIES,
-        ] as Stripe.Checkout.SessionCreateParams.ShippingAddressCollection.AllowedCountry[],
+        allowed_countries:
+          settings.shipping_countries as Stripe.Checkout.SessionCreateParams.ShippingAddressCollection.AllowedCountry[],
       },
       shipping_options: [
         {
           shipping_rate_data: {
             type: "fixed_amount",
             fixed_amount: {
-              amount: freeShipping ? 0 : SHIPPING_RATE,
+              amount: freeShipping ? 0 : settings.shipping_rate,
               currency: "eur",
             },
             display_name: freeShipping
@@ -83,21 +87,23 @@ export async function POST(request: Request) {
               : "Standardversand",
             tax_behavior: "inclusive",
             delivery_estimate: {
-              minimum: { unit: "business_day", value: 2 },
-              maximum: { unit: "business_day", value: 5 },
+              minimum: { unit: "business_day", value: settings.delivery_min_days },
+              maximum: { unit: "business_day", value: settings.delivery_max_days },
             },
           },
         },
       ],
       phone_number_collection: { enabled: true },
-      allow_promotion_codes: true,
-      invoice_creation: { enabled: true },
+      allow_promotion_codes: settings.promotion_codes,
+      invoice_creation: { enabled: settings.invoice_creation },
       success_url: `${origin}/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${origin}/shop`,
       metadata: {
         source: "osneez-store",
         items: JSON.stringify(
-          parsed.data.items.map((item) => `${item.slug}:${item.size}x${item.quantity}`),
+          parsed.data.items.map(
+            (item) => `${item.slug}:${item.size}x${item.quantity}`,
+          ),
         ).slice(0, 480),
       },
     });

@@ -378,3 +378,126 @@ export async function toggleSubscriber(form: FormData) {
   revalidatePath("/admin/newsletter");
   redirect("/admin/newsletter");
 }
+
+/* -------------------------------------------------------------------------- */
+/* Company settings                                                           */
+/* -------------------------------------------------------------------------- */
+
+/** Comma or newline separated input → trimmed array. */
+function list(form: FormData, key: string): string[] {
+  return str(form, key)
+    .split(/[\n,]/)
+    .map((entry) => entry.trim())
+    .filter(Boolean);
+}
+
+async function patchSettings(patch: Record<string, unknown>, section: string) {
+  const db = await guard();
+  const { error } = await db
+    .from("settings")
+    .update(patch)
+    .eq("id", "default");
+  if (error) throw new Error(error.message);
+  flush();
+  redirect(`/admin/settings?saved=${section}`);
+}
+
+export async function saveCompanySettings(form: FormData) {
+  await patchSettings(
+    {
+      legal_name: nullable(form, "legal_name"),
+      legal_form: nullable(form, "legal_form"),
+      street: nullable(form, "street"),
+      postal_code: nullable(form, "postal_code"),
+      city: nullable(form, "city"),
+      country: nullable(form, "country"),
+      representative: nullable(form, "representative"),
+      register_court: nullable(form, "register_court"),
+      register_number: nullable(form, "register_number"),
+      vat_id: nullable(form, "vat_id"),
+      small_business: bool(form, "small_business"),
+      responsible_person: nullable(form, "responsible_person"),
+      contact_email: nullable(form, "contact_email"),
+      support_email: nullable(form, "support_email"),
+      press_email: nullable(form, "press_email"),
+      phone: nullable(form, "phone"),
+    },
+    "company",
+  );
+}
+
+export async function saveShopSettings(form: FormData) {
+  await patchSettings(
+    {
+      announcements: list(form, "announcements"),
+      instagram_url: nullable(form, "instagram_url"),
+      tiktok_url: nullable(form, "tiktok_url"),
+      hero_video_url: nullable(form, "hero_video_url"),
+      hero_image_url: nullable(form, "hero_image_url"),
+    },
+    "shop",
+  );
+}
+
+export async function saveShippingSettings(form: FormData) {
+  await patchSettings(
+    {
+      free_shipping_threshold: cents(form, "free_shipping_threshold"),
+      shipping_rate: cents(form, "shipping_rate"),
+      shipping_countries: list(form, "shipping_countries").map((code) =>
+        code.toUpperCase().slice(0, 2),
+      ),
+      delivery_min_days: Math.max(0, int(form, "delivery_min_days", 2)),
+      delivery_max_days: Math.max(0, int(form, "delivery_max_days", 5)),
+    },
+    "shipping",
+  );
+}
+
+export async function savePaymentSettings(form: FormData) {
+  const methods = form
+    .getAll("payment_methods")
+    .map((value) => String(value).trim())
+    .filter(Boolean);
+
+  await patchSettings(
+    {
+      payment_methods: methods,
+      automatic_tax: bool(form, "automatic_tax"),
+      promotion_codes: bool(form, "promotion_codes"),
+      invoice_creation: bool(form, "invoice_creation"),
+    },
+    "payments",
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+/* Legal pages                                                                */
+/* -------------------------------------------------------------------------- */
+
+export async function saveLegalPage(form: FormData) {
+  const db = await guard();
+  const slug = str(form, "slug");
+  const { error } = await db.from("legal_pages").upsert(
+    {
+      slug,
+      title: str(form, "title"),
+      intro: nullable(form, "intro"),
+      body: String(form.get("body") ?? ""),
+      draft: bool(form, "draft"),
+    },
+    { onConflict: "slug" },
+  );
+  if (error) throw new Error(error.message);
+  flush(`/${slug}`);
+  redirect(`/admin/legal/${slug}?saved=1`);
+}
+
+export async function resetLegalPage(form: FormData) {
+  const db = await guard();
+  const slug = str(form, "slug");
+  const { error } = await db.from("legal_pages").delete().eq("slug", slug);
+  if (error) throw new Error(error.message);
+  flush(`/${slug}`);
+  redirect(`/admin/legal/${slug}?reset=1`);
+}

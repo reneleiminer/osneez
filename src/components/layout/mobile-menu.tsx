@@ -3,16 +3,19 @@
 import Link from "next/link";
 import { useEffect } from "react";
 
-import { PRIMARY_NAV, SITE } from "@/lib/site";
+import { PRIMARY_NAV } from "@/lib/site";
+import type { SocialLink } from "./site-header";
 
 export function MobileMenu({
   open,
   onClose,
   onSearch,
+  socials,
 }: {
   open: boolean;
   onClose: () => void;
   onSearch: () => void;
+  socials: SocialLink[];
 }) {
   useEffect(() => {
     if (!open) return;
@@ -87,24 +90,18 @@ export function MobileMenu({
         <div className="grid gap-3">
           <p className="os-eyebrow">Follow</p>
           <div className="flex gap-6">
-            <a
-              href={SITE.instagram}
-              target="_blank"
-              rel="noreferrer noopener"
-              tabIndex={open ? 0 : -1}
-              className="os-label os-underline text-xs"
-            >
-              Instagram
-            </a>
-            <a
-              href={SITE.tiktok}
-              target="_blank"
-              rel="noreferrer noopener"
-              tabIndex={open ? 0 : -1}
-              className="os-label os-underline text-xs"
-            >
-              TikTok
-            </a>
+            {socials.map((social) => (
+              <a
+                key={social.label}
+                href={social.href}
+                target="_blank"
+                rel="noreferrer noopener"
+                tabIndex={open ? 0 : -1}
+                className="os-label os-underline text-xs"
+              >
+                {social.label}
+              </a>
+            ))}
           </div>
         </div>
       </div>

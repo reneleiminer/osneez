@@ -1,7 +1,8 @@
 import Link from "next/link";
 
 import { Marquee } from "@/components/motion/marquee";
-import { FOOTER_NAV, MARQUEE_WORDS, SITE } from "@/lib/site";
+import { FOOTER_NAV, MARQUEE_WORDS } from "@/lib/site";
+import type { Settings } from "@/types/settings";
 import { NewsletterSection } from "./newsletter-section";
 
 const COLUMNS = [
@@ -10,7 +11,14 @@ const COLUMNS = [
   { title: "Legal", links: FOOTER_NAV.legal },
 ];
 
-export function SiteFooter() {
+export function SiteFooter({ settings }: { settings: Settings }) {
+  const socials = [
+    { label: "Instagram", href: settings.instagram_url },
+    { label: "TikTok", href: settings.tiktok_url },
+  ].filter((entry): entry is { label: string; href: string } =>
+    Boolean(entry.href),
+  );
+
   return (
     <>
       <NewsletterSection />
@@ -28,22 +36,17 @@ export function SiteFooter() {
               streets. Made for the hours nobody talks about.
             </p>
             <div className="mt-6 flex gap-5">
-              <a
-                href={SITE.instagram}
-                target="_blank"
-                rel="noreferrer noopener"
-                className="os-label os-underline text-[0.625rem] text-smoke"
-              >
-                Instagram
-              </a>
-              <a
-                href={SITE.tiktok}
-                target="_blank"
-                rel="noreferrer noopener"
-                className="os-label os-underline text-[0.625rem] text-smoke"
-              >
-                TikTok
-              </a>
+              {socials.map((social) => (
+                <a
+                  key={social.label}
+                  href={social.href}
+                  target="_blank"
+                  rel="noreferrer noopener"
+                  className="os-label os-underline text-[0.625rem] text-smoke"
+                >
+                  {social.label}
+                </a>
+              ))}
             </div>
           </div>
 
@@ -68,7 +71,7 @@ export function SiteFooter() {
 
         <div className="os-edge flex flex-wrap items-center justify-between gap-4 border-t os-rule py-6">
           <p className="os-label text-[0.5625rem] text-smoke">
-            © {new Date().getFullYear()} {SITE.legalName} — All rights reserved
+            © {new Date().getFullYear()} {settings.legal_name ?? "OSNEEZ"} — All rights reserved
           </p>
           <p className="os-label text-[0.5625rem] text-smoke">
             Built after dark

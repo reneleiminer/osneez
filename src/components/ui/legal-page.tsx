@@ -1,27 +1,22 @@
-import type { ReactNode } from "react";
-
-export type LegalSection = {
-  heading: string;
-  body: ReactNode[];
-};
+import type { RenderedSection } from "@/lib/legal/render";
 
 /**
- * Shared shell for the legal pages. The copy is a working draft with clearly
- * marked placeholders — it is not legal advice and must be reviewed before
- * the shop goes live.
+ * Shell for the legal and service pages. Content comes from the database
+ * (or the bundled draft); a page still flagged as a draft says so in the UI
+ * and is excluded from search engines.
  */
 export function LegalPage({
   eyebrow,
   title,
   intro,
   sections,
-  showPlaceholderNotice = true,
+  draft = false,
 }: {
   eyebrow: string;
   title: string;
   intro?: string;
-  sections: LegalSection[];
-  showPlaceholderNotice?: boolean;
+  sections: RenderedSection[];
+  draft?: boolean;
 }) {
   return (
     <div className="os-edge py-14 lg:py-20">
@@ -37,14 +32,13 @@ export function LegalPage({
         ) : null}
       </header>
 
-      {showPlaceholderNotice ? (
+      {draft ? (
         <div className="mt-8 border-l-2 border-signal bg-asphalt/60 px-5 py-4">
           <p className="os-label text-[0.5625rem] text-signal">
             Entwurf — juristisch prüfen
           </p>
           <p className="mt-2 max-w-[68ch] text-[0.75rem] leading-relaxed text-smoke">
-            Alle Angaben in eckigen Klammern sind Platzhalter und müssen vor dem
-            Launch durch die echten Unternehmensdaten ersetzt werden. Dieser Text
+            Angaben in eckigen Klammern sind noch nicht hinterlegt. Dieser Text
             ist keine Rechtsberatung und ersetzt keine anwaltliche Prüfung.
           </p>
         </div>
@@ -76,13 +70,13 @@ export function LegalPage({
             >
               <h2 className="os-label text-[0.6875rem]">{section.heading}</h2>
               <div className="mt-4 grid gap-4">
-                {section.body.map((paragraph, position) => (
-                  <div
+                {section.paragraphs.map((paragraph, position) => (
+                  <p
                     key={`${section.heading}-${position}`}
-                    className="max-w-[68ch] text-[0.8125rem] leading-relaxed text-smoke"
+                    className="max-w-[68ch] text-[0.8125rem] leading-relaxed whitespace-pre-line text-smoke"
                   >
                     {paragraph}
-                  </div>
+                  </p>
                 ))}
               </div>
             </section>

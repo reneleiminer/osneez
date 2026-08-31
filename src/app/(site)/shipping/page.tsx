@@ -1,57 +1,35 @@
 import type { Metadata } from "next";
 
 import { LegalPage } from "@/components/ui/legal-page";
-import { SHIPPING_COUNTRIES } from "@/lib/site";
+import { getLegalPage } from "@/lib/legal/queries";
+import { parseLegalBody, resolveTokens } from "@/lib/legal/render";
+import { getSettings } from "@/lib/settings";
 
-export const metadata: Metadata = {
-  title: "Shipping",
-  description:
-    "Versandkosten, Lieferzeiten und Versandländer für Bestellungen bei OSNEEZ.",
-  alternates: { canonical: "/shipping" },
-};
+export const revalidate = 300;
 
-export default function ShippingPage() {
+export async function generateMetadata(): Promise<Metadata> {
+  const page = await getLegalPage("shipping");
+  return {
+    title: page.title,
+    description: page.intro ?? undefined,
+    alternates: { canonical: "/shipping" },
+    robots: { index: !page.draft, follow: true },
+  };
+}
+
+export default async function Page() {
+  const [page, settings] = await Promise.all([
+    getLegalPage("shipping"),
+    getSettings(),
+  ]);
+
   return (
     <LegalPage
-      eyebrow="Service"
-      title="Shipping"
-      intro="Versand innerhalb von 48 Stunden (Mo–Fr). Kostenlos in Deutschland ab 120 €."
-      sections={[
-        {
-          heading: "Kosten",
-          body: [
-            "Deutschland: 4,90 € — ab einem Bestellwert von 120 € versandkostenfrei.",
-            "EU: Der Versandpreis wird im Checkout anhand des Ziellandes berechnet und vor dem Bezahlen angezeigt.",
-          ],
-        },
-        {
-          heading: "Laufzeit",
-          body: [
-            "Bearbeitung: 1–2 Werktage. Zustellung: 2–5 Werktage innerhalb der EU.",
-            "Bei Drops kann die Bearbeitung in den ersten Tagen nach Release länger dauern. Wir melden uns, wenn etwas abweicht.",
-          ],
-        },
-        {
-          heading: "Versandländer",
-          body: [
-            `Aktuell versenden wir nach: ${SHIPPING_COUNTRIES.join(", ")}.`,
-            "Weitere Länder auf Anfrage — schreib uns über die Kontaktseite.",
-          ],
-        },
-        {
-          heading: "Sendungsverfolgung",
-          body: [
-            "Sobald dein Paket das Lager verlässt, bekommst du eine E-Mail mit Tracking-Link.",
-          ],
-        },
-        {
-          heading: "Zoll und Einfuhr",
-          body: [
-            "Bei Lieferungen außerhalb der EU können Zölle und Einfuhrsteuern anfallen, die von der Empfängerin oder dem Empfänger zu tragen sind.",
-          ],
-        },
-      ]}
-      showPlaceholderNotice={false}
+      eyebrow="Legal"
+      title={page.title}
+      intro={page.intro ? resolveTokens(page.intro, settings) : undefined}
+      sections={parseLegalBody(page.body, settings)}
+      draft={page.draft}
     />
   );
 }

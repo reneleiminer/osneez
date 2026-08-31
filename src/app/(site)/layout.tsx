@@ -1,5 +1,7 @@
 import { SiteChrome } from "@/components/layout/site-chrome";
+import { getSettings } from "@/lib/settings";
 
-export default function SiteLayout({ children }: LayoutProps<"/">) {
-  return <SiteChrome>{children}</SiteChrome>;
+export default async function SiteLayout({ children }: LayoutProps<"/">) {
+  const settings = await getSettings();
+  return <SiteChrome settings={settings}>{children}</SiteChrome>;
 }

@@ -6,23 +6,30 @@ import { AnnouncementBar } from "@/components/layout/announcement-bar";
 import { PageTransition } from "@/components/layout/page-transition";
 import { SiteFooter } from "@/components/layout/site-footer";
 import { SiteHeader } from "@/components/layout/site-header";
+import type { Settings } from "@/types/settings";
 
 /**
  * Storefront shell: announcement bar, header, footer, cart and page
- * transitions.
- *
- * Deliberately synchronous, top to bottom. React drops suspending subtrees
- * while rendering a notFound() boundary, so any await in this chain would
- * leave every 404 page without chrome. Search data is fetched on demand from
- * /api/search instead of being inlined into every document.
+ * transitions. Everything configurable comes from the company settings.
  */
-export function SiteChrome({ children }: { children: ReactNode }) {
+export function SiteChrome({
+  children,
+  settings,
+}: {
+  children: ReactNode;
+  settings: Settings;
+}) {
   return (
-    <CartProvider>
-      <AnnouncementBar />
-      <SiteHeader />
+    <CartProvider freeShippingThreshold={settings.free_shipping_threshold}>
+      <AnnouncementBar lines={settings.announcements} />
+      <SiteHeader
+        socials={[
+          { label: "Instagram", href: settings.instagram_url },
+          { label: "TikTok", href: settings.tiktok_url },
+        ].filter((s): s is { label: string; href: string } => Boolean(s.href))}
+      />
       <main id="main">{children}</main>
-      <SiteFooter />
+      <SiteFooter settings={settings} />
       <CartDrawer />
       <PageTransition />
     </CartProvider>

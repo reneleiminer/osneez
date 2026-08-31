@@ -10,7 +10,9 @@ import { PRIMARY_NAV } from "@/lib/site";
 import { MobileMenu } from "./mobile-menu";
 import { SearchOverlay } from "./search-overlay";
 
-export function SiteHeader() {
+export type SocialLink = { label: string; href: string };
+
+export function SiteHeader({ socials }: { socials: SocialLink[] }) {
   const pathname = usePathname();
   const { count, open: openBag } = useCart();
   const [scrolled, setScrolled] = useState(false);
@@ -116,6 +118,7 @@ export function SiteHeader() {
           setMenuOpen(false);
           setSearchOpen(true);
         }}
+        socials={socials}
       />
       <SearchOverlay
         open={searchOpen}
